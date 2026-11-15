@@ -2,6 +2,31 @@
 
 Maintained by Claude Code (`/status`) and read by the planner session. Newest milestone first.
 
+## Step 1: make the B2C work usable (2026-11-15, user's own repo `learnhub_demo`)
+
+**Tests: pending (user decision, 2026-11-15: no tests or E2E until the user asks).** Checked only with
+`manage.py check`, ruff on the changed files and `tsc -b`.
+
+- **Routes:** already wired before this step (the PR1/PR2 notes below say "not router-wired"; that is out of
+  date). `/wallet`, `/wallet/buy`, `/wallet/result`, `/subscription`, `/packages`, `/checkout/review`, console
+  `token-pricing`, `wallets`, `packages`; user menu and console nav entries exist.
+- **Checkout types:** the corporate schemas were already renamed `CorporateCheckoutIn/Out`. Regenerated
+  `schema.d.ts` (it was also behind the team's backend: postponements, departures, token rate fields) and
+  removed the `useCheckout` cast workaround. `sendHeartbeat` now defaults `flush_now` (the old types had been
+  hand-edited to make it optional).
+- **Player access for full-course unlocks (bug):** a full-course token unlock or a cash package created only a
+  `ContentEntitlement`, so "Start learning" led to a player with no enrolment. User decision: enrol on full access.
+  - `apps/commerce/unlock.py::enrol_on_course_access` creates (idempotently) a personal `Enrollment`
+    (source `purchase`, or `admin_grant` for a staff grant; `source_ref` = the entitlement; expiry = the
+    entitlement's). Called by `unlock_course` and `packages.fulfil_package`.
+  - New `POST /api/v1/commerce/tokens/access/course/{course_id}/enrol` (`CourseAccessEnrolOut`) for access gained
+    before this change; the course page calls it from "Start learning" (`useEnrolWithAccess`).
+  - The Unlimited plan already enrolled through `plan/enroll`; single-lecture unlocks stay on the course page.
+  - Known gap: revoking or refunding an entitlement does not yet end its enrolment.
+- **Bug:** the course page's access badge keys (`package`, `token`, `admin`, `legacy`) never matched the
+  resolver's sources, so it always said "You have access". Keys fixed.
+- No migration.
+
 ## Site-wide dark-mode native-control fix (2026-11-12)
 
 - Native form controls now inherit the active browser `color-scheme`; `select` option
@@ -455,6 +480,9 @@ Keep Bunny's player (no custom player, no hls.js).
    - the reviewer over the whole branch;
    - a click-through of the whole demo.
 4. Deployment.
+5. **M17 HR system (Breathe HR)**, after the final test round (user decision, 2026-11-14).
+   Brief: `docs/milestones/M17-hr-system.md`. Needs `CREDENTIAL_ENCRYPTION_KEY`, the
+   `cryptography` pin and four additive migrations first (see `NEEDS-USER.md`).
 
 ## B2C-03 — PR 2 done (2026-11-11)
 

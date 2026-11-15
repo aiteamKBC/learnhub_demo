@@ -183,6 +183,7 @@ def fulfil_package(*, session_id: str, user_id: UUID, package_id: UUID, course_i
 
     CashPackage.objects.filter(pk=package_id).first()
     now = timezone.now()
+    granted = []
 
     for cid_str in course_id_strs:
         try:
@@ -191,6 +192,7 @@ def fulfil_package(*, session_id: str, user_id: UUID, package_id: UUID, course_i
             cid = _UUID(cid_str)
         except ValueError:
             continue
+        granted.append(cid)
 
         existing = (
             ContentEntitlement.objects.filter(
@@ -219,6 +221,17 @@ def fulfil_package(*, session_id: str, user_id: UUID, package_id: UUID, course_i
             granted_at=now,
             note=f"Package purchase, session {session_id}",
         )
+
+    # open the player for every bundled course, like a normal purchase
+    from apps.catalog.models import Course
+
+    from .unlock import enrol_on_course_access
+
+    live = Course.objects.filter(
+        pk__in=granted, owner_org__isnull=True, live_version__isnull=False
+    ).values_list("id", flat=True)
+    for cid in live:
+        enrol_on_course_access(user=user, course_id=cid)
 
     audit(
         "package.fulfil",

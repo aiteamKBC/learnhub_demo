@@ -1524,6 +1524,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/commerce/tokens/access/course/{course_id}/enrol": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enrol With Course Access
+         * @description Open the player for a course the learner already has full access to (token unlock,
+         *     cash package, staff grant), including access gained before enrolment was automatic.
+         */
+        post: operations["apps_commerce_token_api_enrol_with_course_access"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/commerce/tokens/rate": {
         parameters: {
             query?: never;
@@ -4731,6 +4752,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/console/corporate/cancellations/{cancellation_id}/postpone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Process Postponement
+         * @description Execute a live postponement; approval alone never changes a booking.
+         */
+        post: operations["apps_platform_console_corporate_cancellations_process_postponement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/console/corporate/cancellations/{cancellation_id}/refund": {
         parameters: {
             query?: never;
@@ -4793,7 +4834,7 @@ export interface paths {
         put?: never;
         /**
          * Apply Departure
-         * @description Record that someone left. Paid access is never ended early (see corporate/departure.py).
+         * @description Remove a leaver and release company-owned training places for reuse.
          */
         post: operations["apps_platform_console_corporate_cancellations_apply_departure"];
         delete?: never;
@@ -8174,8 +8215,6 @@ export interface components {
             target_type: string;
             /** Target Id */
             target_id: string;
-            /** Target Name */
-            target_name: string;
             /** Data */
             data: {
                 [key: string]: unknown;
@@ -8817,7 +8856,11 @@ export interface components {
              * @default false
              */
             ended: boolean;
-            flush_now?: boolean;
+            /**
+             * Flush Now
+             * @default false
+             */
+            flush_now: boolean;
         };
         /** ProgressOut */
         ProgressOut: {
@@ -10043,11 +10086,19 @@ export interface components {
             /** Expires At */
             expires_at?: string | null;
         };
+        /** CourseAccessEnrolOut */
+        CourseAccessEnrolOut: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+        };
         /** TokenRateOut */
         TokenRateOut: {
             /** Tokens Per Gbp Minor */
             tokens_per_gbp_minor: string;
-            /** GBP price of one token */
+            /** Token Price Gbp */
             token_price_gbp: string;
             /** Effective From */
             effective_from: string;
@@ -14444,6 +14495,21 @@ export interface components {
              */
             admin_notes: string;
         };
+        /** ConsolePostponementIn */
+        ConsolePostponementIn: {
+            /**
+             * Target Cohort Id
+             * Format: uuid
+             */
+            target_cohort_id: string;
+            /** Seats */
+            seats: number;
+            /**
+             * Admin Notes
+             * @default
+             */
+            admin_notes: string;
+        };
         /** ConsoleRefundIn */
         ConsoleRefundIn: {
             /** Amount Minor */
@@ -18296,9 +18362,9 @@ export interface components {
             lecture_id: string;
             /** Title */
             title: string;
-            /** Component Type */
+            /** Kind */
             kind: string;
-            /** Duration in Minutes */
+            /** Duration Min */
             duration_min: number;
             /** Current Price */
             current_price: number | null;
@@ -18424,7 +18490,7 @@ export interface components {
             name: string;
             /** Token Amount */
             token_amount: number;
-            /** Price in GBP minor units (pence) */
+            /** Price Gbp Minor */
             price_gbp_minor: number;
             /** Is Active */
             is_active: boolean;
@@ -18437,7 +18503,7 @@ export interface components {
             name: string;
             /** Token Amount */
             token_amount: number;
-            /** Price in GBP minor units (pence) */
+            /** Price Gbp Minor */
             price_gbp_minor: number;
             /**
              * Is Active
@@ -18477,13 +18543,13 @@ export interface components {
         ConsoleTokenRateIn: {
             /** Tokens Per Gbp Minor */
             tokens_per_gbp_minor: number | string;
+            /** Effective From */
+            effective_from?: string | null;
             /**
-             * Effective From
-             * Format: date-time
+             * Apply Immediately
+             * @default false
              */
-            effective_from?: string;
-            /** Apply this admin rate immediately */
-            apply_immediately?: boolean;
+            apply_immediately: boolean;
             /**
              * Notes
              * @default
@@ -20928,6 +20994,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccessOut"];
+                };
+            };
+        };
+    };
+    apps_commerce_token_api_enrol_with_course_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseAccessEnrolOut"];
                 };
             };
         };
@@ -25697,6 +25785,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ConsoleCancellationReview"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_corporate_cancellations_process_postponement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cancellation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsolePostponementIn"];
             };
         };
         responses: {

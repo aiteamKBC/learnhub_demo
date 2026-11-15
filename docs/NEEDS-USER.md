@@ -1,6 +1,7 @@
 # Questions for the user
 
-0b. **[B2C-FE] Backend exposure needed to finish the in-player token unlock (deliverable 7).**
+0b. **CLOSED 2026-11-15 (user decision: enrol on full access).** A full-course token unlock, a cash package or a staff grant now creates a normal personal enrolment, so the player opens; the Unlimited plan already enrolled through `plan/enroll`. Single-lecture unlocks stay on the course page (no enrolment). See build-status.
+   Original question: **[B2C-FE] Backend exposure needed to finish the in-player token unlock (deliverable 7).**
    The player outline (`PlayerOut.PlayerLecture`) exposes `key, title, kind, duration_sec, completed,
    position_sec, locked, prerequisite_key, prerequisite_title`. To offer per-lecture / per-material token
    unlock **inside the player**, it needs to additionally expose, per lecture (and per resource):
@@ -22,7 +23,8 @@
    **Still not surfaced:** per-material price inputs (the material PATCH endpoint and the material rows exist in
    the detail payload, but the editor only renders lecture rows) — add material inputs if the client needs them.
 
-0. **[B2C-FE / B2B] Duplicate Ninja schema class names corrupt the generated API types.**
+0. **CLOSED 2026-11-15.** The corporate classes are now `CorporateCheckoutIn/Out`; types regenerated; the frontend workaround in `useCheckout` is removed.
+   Original: **[B2C-FE / B2B] Duplicate Ninja schema class names corrupt the generated API types.**
    `apps/corporate/api.py` defines `CheckoutIn` and `CheckoutOut`, names that already belong to
    `apps/commerce/schemas.py`. The runtime is fine (each router uses its own imported class), but the
    OpenAPI generator keys `components.schemas` by title, so the corporate shapes
@@ -77,3 +79,16 @@
 0003_instructor_invites table); QR code built; pending invitations built. All questions here are closed;
 client question 21 stays open in `client-questions.md`. This file can be deleted.
 
+
+---
+## M17 HR system (Breathe HR): needed before the build starts (added 2026-11-14)
+Brief: `docs/milestones/M17-hr-system.md`. Not needed until M17 starts (after the final regression).
+1. **`CREDENTIAL_ENCRYPTION_KEY`** in `backend/.env`, `backend/.env.e2e` and the production environment:
+   32+ random characters (`python -c "import secrets; print(secrets.token_urlsafe(40))"`). It encrypts each
+   company's Breathe key. Losing it means every company reconnects. **Recommended:** add it now; never paste it in chat.
+2. **Pin `cryptography==50.0.2`** in `requirements.txt`. It is already installed through `django-allauth[mfa]`,
+   so this is a pin, not a new package. **Recommended:** yes.
+3. **Migrations on dev and e2e** (all additive, run when M17 is built): core 0003 (new `integrations` schema),
+   integrations 0001/0002, engagement 0009 (notification wording, insert-only). **Recommended:** yes, after `sqlmigrate` is shown.
+4. **Breathe sandbox key:** you enter it on `/business/hr-system` during the live check, never in code or chat.
+   The Breathe endpoint paths are confirmed against the current Breathe docs before that check.

@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCategories, useCourse, usePreview, useReviews } from '@/features/catalog/api'
 import { useAddToCart, useCheckout, usePlanEnroll, useToggleWishlist } from '@/features/commerce/api'
-import { useAccess } from '@/features/b2c/api'
+import { useAccess, useEnrolWithAccess } from '@/features/b2c/api'
 import { UnlockButton } from '@/features/b2c/UnlockButton'
 import { Price } from '@/features/catalog/CourseCard'
 import { TeamBuy } from '@/features/corporate/TeamBuy'
@@ -28,13 +28,16 @@ import { Link, useNavigate } from '@/lib/router'
 
 const kindIcon: Record<string, LucideIcon> = { video: PlayCircle, article: FileText, quiz: HelpCircle, assignment: ListChecks, live_session: Radio, external_link: Globe }
 
+// keys are the access resolver's sources (apps/platform/access.py)
 const ACCESS_SOURCE_LABEL: Record<string, string> = {
-  legacy: 'You already own this',
-  package: 'Included in a package you bought',
-  token: 'Unlocked with tokens',
+  legacy_purchase: 'You already own this',
+  cash_package: 'Included in a package you bought',
+  full_course_token_unlock: 'Unlocked with tokens',
   subscription: 'Included in your subscription',
-  admin: 'Granted by LearnHub',
+  admin_grant: 'Granted by LearnHub',
 }
+/** Sources that give the whole course and so open the player (mirrors unlock.FULL_ACCESS_SOURCES). */
+const FULL_ACCESS_SOURCES = ['full_course_token_unlock', 'cash_package', 'admin_grant']
 
 type Detail = NonNullable<ReturnType<typeof useCourse>['data']>
 
@@ -239,6 +242,9 @@ function BuyBox({ course, onPreview }: { course: Detail; onPreview?: () => void 
   const access = useAccess('course', course.id, b2cEligible)
   const alreadyHasAccess = b2cEligible && access.data?.allowed === true
   const tokenCoursePrice = course.full_course_token_price ?? null
+  // full access without an enrolment yet (bought before enrolment was automatic): enrol first, then play
+  const enrolWithAccess = useEnrolWithAccess()
+  const needsEnrol = alreadyHasAccess && FULL_ACCESS_SOURCES.includes(access.data!.source)
 
   const fail = (e: unknown) => toast.error((e as Error).message)
   const add = () => addToCart.mutate(course.id, { onSuccess: () => toast.success('Added to your cart', { action: { label: 'View cart', onClick: () => navigate('/cart') } }), onError: fail })
@@ -297,11 +303,17 @@ function BuyBox({ course, onPreview }: { course: Detail; onPreview?: () => void 
             <Badge tone="success">
               <Check /> {ACCESS_SOURCE_LABEL[access.data!.source] ?? 'You have access'}
             </Badge>
-            <Button size="lg" className="mt-4 w-full" asChild>
-              <Link to={`/learn/${course.slug}`}>
+            {needsEnrol ? (
+              <Button size="lg" className="mt-4 w-full" loading={enrolWithAccess.isPending} onClick={() => enrolWithAccess.mutate(course.id, { onSuccess: () => navigate(`/learn/${course.slug}`), onError: fail })}>
                 <PlayCircle /> Start learning
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button size="lg" className="mt-4 w-full" asChild>
+                <Link to={`/learn/${course.slug}`}>
+                  <PlayCircle /> Start learning
+                </Link>
+              </Button>
+            )}
           </>
         ) : free ? (
           <>

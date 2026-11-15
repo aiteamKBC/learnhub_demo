@@ -215,6 +215,8 @@ def unlock_course(*, user, course_id: UUID, actor=None, request=None) -> Content
 
     spend.entitlement = ent
     spend.save(update_fields=["entitlement", "updated_at"])
+    if course.live_version_id:
+        enrol_on_course_access(user=user, course_id=course_id)
 
     if request:
         audit_request(
@@ -229,6 +231,49 @@ def unlock_course(*, user, course_id: UUID, actor=None, request=None) -> Content
         )
 
     return ent
+
+
+FULL_ACCESS_SOURCES = (
+    ContentEntitlement.Source.FULL_COURSE_TOKEN_UNLOCK,
+    ContentEntitlement.Source.CASH_PACKAGE,
+    ContentEntitlement.Source.ADMIN_GRANT,
+)
+
+
+def enrol_on_course_access(*, user, course_id: UUID):
+    """Full-course access (token unlock, cash package, staff grant) opens the player through a
+    normal personal enrolment, linked to the entitlement. Idempotent: returns any existing one.
+    The Unlimited plan enrols through `services.enrol_with_plan` instead."""
+    from apps.catalog.models import Course
+    from apps.learning import services as learning
+    from apps.learning.models import Enrollment
+    from core.errors import ServiceError
+
+    ent = (
+        ContentEntitlement.objects.filter(
+            user=user,
+            scope=ContentEntitlement.Scope.COURSE,
+            target_id=course_id,
+            source__in=FULL_ACCESS_SOURCES,
+            revoked_at__isnull=True,
+        )
+        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now()))
+        .order_by("granted_at")
+        .first()
+    )
+    if ent is None:
+        raise ServiceError("no_access", "You don't have full access to this course yet.", status=403)
+    course = Course.objects.filter(pk=course_id, owner_org__isnull=True).first()
+    if course is None:
+        raise ServiceError("not_found", "Course not found.", status=404)
+    source = (
+        Enrollment.Source.ADMIN_GRANT
+        if ent.source == ContentEntitlement.Source.ADMIN_GRANT
+        else Enrollment.Source.PURCHASE
+    )
+    return learning.enrol(
+        user=user, course=course, source=source, source_ref=ent.id, access_expires_at=ent.expires_at
+    )
 
 
 def _instructor_id(course_id):

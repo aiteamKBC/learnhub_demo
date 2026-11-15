@@ -279,6 +279,20 @@ def check_access(request, scope: str, target_id: UUID):
     }
 
 
+class CourseAccessEnrolOut(Schema):
+    enrollment_id: UUID
+
+
+@router.post("/access/course/{course_id}/enrol", response=CourseAccessEnrolOut)
+def enrol_with_course_access(request, course_id: UUID):
+    """Open the player for a course the learner already has full access to (token unlock,
+    cash package, staff grant), including access gained before enrolment was automatic."""
+    from .unlock import enrol_on_course_access
+
+    e = enrol_on_course_access(user=request.user, course_id=course_id)
+    return {"enrollment_id": e.id}
+
+
 # ---------------------------------------------------------------- custom top-up
 @router.get("/rate", response=TokenRateOut | None, auth=None)
 def current_rate(request):

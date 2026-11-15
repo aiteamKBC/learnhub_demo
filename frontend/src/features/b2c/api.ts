@@ -148,6 +148,16 @@ export function useUnlock() {
   })
 }
 
+/** Full access (token unlock, package, staff grant) without an enrolment yet: create it so the player opens. */
+export function useEnrolWithAccess() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (courseId: string) =>
+      unwrap(api.POST('/api/v1/commerce/tokens/access/course/{course_id}/enrol', { params: { path: { course_id: courseId } }, headers: PERSONAL })),
+    onSuccess: () => qc.invalidateQueries({ predicate: (q) => ['course', 'my-courses', 'b2c-access'].includes(String(q.queryKey[0])) }),
+  })
+}
+
 // ------------------------------------------------------------------ cash packages
 export function useCashPackages() {
   const { code } = useCurrency()
