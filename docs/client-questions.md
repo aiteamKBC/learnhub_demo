@@ -28,3 +28,9 @@ questions here, never decide them in code.
 | 20 | Maintenance mode, guest browsing, registration | All on (maintenance off) | Defaults for launch |
 | 21 | Payout hold and refund window | The payout hold is never shorter than the refund window (30 days each), so money cannot be paid out and then refunded | Keep them linked? |
 | 22 | Instructor invitations | Staff invite by email; the link works for 7 days. **Answered 2026-11-08: yes**, built: a pending list with resend and cancel | Closed |
+| 23 | HR system: fields imported (M17) | Name, email, job title, department, manager, employment status, start date, hours, working pattern | Which Breathe fields to import |
+| 24 | HR system: sync frequency (M17) | Every hour, plus a "Sync now" button | Frequency |
+| 25 | HR system: matching people (M17) | An email match is only a suggestion; an admin confirms it | Or link automatically by email |
+| 26 | HR system: training records (M17) | An admin maps each Breathe training title to a requirement; imported records follow the requirement's renewal rule | Which titles count for which requirements; do imported records expire |
+| 27 | HR system: leavers (M17) | Flagged only; never removed from LearnHub | Flag, suspend or remove |
+| 28 | HR system: leave visibility (M17) | Approved leave shows "On leave until …" to admins and managers | Should managers see leave |

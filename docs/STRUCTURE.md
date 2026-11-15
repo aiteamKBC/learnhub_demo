@@ -14,8 +14,9 @@
 | `engagement` | reviews, Q&A, votes, announcements, notifications |
 | `analytics` | rollups for dashboards (rebuildable, referenced by nothing) |
 | `platform` | settings, entitlements, webhook inbox, audit log, outbox, feature flags |
+| `integrations` (planned, M17) | HR system connections (Breathe HR), imported people, departments, training records, leave, sync runs |
 
-Dependencies only point upward: identity <- org <- catalog <- learning <- compliance;
+Dependencies only point upward: identity <- org <- catalog <- learning <- compliance <- integrations;
 commerce, payouts and engagement may reference any of those; nothing references analytics.
 
 ## Inside each app

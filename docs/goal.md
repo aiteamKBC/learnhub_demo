@@ -42,6 +42,7 @@ The user deletes `NEEDS-USER.md` once they've answered.
   - the phone check on every route in light and dark;
   - `reviewer` over the whole branch.
   All green, recorded in build-status, pushed.
+- [ ] M17 HR system, Breathe HR (`docs/milestones/M17-hr-system.md`). Added 2026-11-14 (user decision): starts after the final regression above. Needs `CREDENTIAL_ENCRYPTION_KEY` and the migrations first (see `NEEDS-USER.md`). Its own E2E script (`e2e_m17.js`) and phone check on `/business/hr-system` must pass, plus every earlier E2E script.
 ## Running unattended
 - Nobody is there to approve prompts. Don't run `migrate`, installs or merges. Instead, put the need
   (e.g. "migration X must be applied to dev and e2e") in docs/NEEDS-USER.md and carry on with
