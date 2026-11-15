@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Coins, Gift, Plus, ReceiptText, RefreshCw } from 'lucide-react'
 
-import { Backdrop } from '@/components/art/backdrops'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody } from '@/components/ui/card'
@@ -22,7 +21,6 @@ export function WalletPage() {
 
   return (
     <div className="relative isolate min-h-[70vh]">
-      <Backdrop variant="coins" height={520} />
       <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <PageHeader
           title="Your token wallet"

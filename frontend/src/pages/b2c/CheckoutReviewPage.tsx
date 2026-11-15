@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { toast } from 'sonner'
 
-import { Backdrop } from '@/components/art/backdrops'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody } from '@/components/ui/card'
 import { Input, NativeSelect } from '@/components/ui/input'
@@ -43,7 +42,6 @@ export function CheckoutReviewPage() {
 
   return (
     <div className="relative isolate min-h-[70vh]">
-      <Backdrop variant="ribbons" height={520} />
       <div className="relative mx-auto max-w-2xl px-4 py-8 sm:px-6">
         <PageHeader
           title="Review your purchase"

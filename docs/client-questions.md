@@ -34,3 +34,5 @@ questions here, never decide them in code.
 | 26 | HR system: training records (M17) | An admin maps each Breathe training title to a requirement; imported records follow the requirement's renewal rule | Which titles count for which requirements; do imported records expire |
 | 27 | HR system: leavers (M17) | Flagged only; never removed from LearnHub | Flag, suspend or remove |
 | 28 | HR system: leave visibility (M17) | Approved leave shows "On leave until …" to admins and managers | Should managers see leave |
+
+| 29 | Privacy policy and terms | No page yet; the footer link was removed | Provide the privacy policy and terms text (legal wording is the client's) |

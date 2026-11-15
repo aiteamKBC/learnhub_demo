@@ -15,7 +15,21 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  build: { target: 'es2022' },
+  build: {
+    target: 'es2022',
+    rolldownOptions: {
+      output: {
+        // Long-lived vendor chunks: they cache across deploys and keep the entry chunk small.
+        codeSplitting: {
+          groups: [
+            { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/, priority: 3 },
+            { name: 'vendor-query', test: /node_modules[\\/]@tanstack[\\/]/, priority: 2 },
+            { name: 'vendor-radix', test: /node_modules[\\/](@radix-ui|@floating-ui)[\\/]/, priority: 1 },
+          ],
+        },
+      },
+    },
+  },
   server: {
     // Invitation emails are often opened on a phone during local testing. Bind to
     // the LAN interface so a configured FRONTEND_URL can reach this dev server.

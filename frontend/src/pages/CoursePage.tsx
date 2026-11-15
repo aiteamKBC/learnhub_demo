@@ -1,5 +1,5 @@
 import { Award, BarChart3, Check, ChevronDown, Clock, Coins, Crown, FileText, Globe, Heart, HelpCircle, Infinity as InfinityIcon, ListChecks, PlayCircle, Radio, RefreshCw, ShoppingCart, Smartphone, Users, type LucideIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -400,6 +400,9 @@ export function CoursePage() {
   const { data: c, isLoading, error, refetch } = useCourse(slug)
   const { data: cats } = useCategories()
   const [preview, setPreview] = useState<{ key: string; title: string } | null>(null)
+  useEffect(() => {
+    if (c?.title) document.title = `${c.title} · LearnHub`
+  }, [c?.title])
   if (isLoading) return <CourseSkeleton />
   if (error || !c) return <ErrorState message={(error as Error)?.message} onRetry={() => void refetch()} />
   const firstPreview = c.sections.flatMap((s) => s.lectures).find((l) => l.is_preview && l.kind === 'video')

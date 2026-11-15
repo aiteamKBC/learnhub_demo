@@ -1,6 +1,6 @@
 import { Megaphone, Wrench, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useState } from 'react'
+import { Navigate, Outlet, useLocation, useMatches } from 'react-router-dom'
 
 import { Backdrop } from '@/components/art/backdrops'
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,18 @@ function useBranding(name: string, favicon: string) {
     link.href = favicon
     document.head.appendChild(link)
   }, [favicon])
+}
+
+/** Every route names its browser tab with `handle: { title }` ("Title · LearnHub"). A layout
+ * effect runs before page effects, so a page that sets a more specific title (a course name)
+ * still wins. useBranding then swaps in a renamed platform. */
+function usePageTitle() {
+  const matches = useMatches()
+  let title: string | undefined
+  for (let i = matches.length - 1; i >= 0 && !title; i--) title = (matches[i]!.handle as { title?: string } | undefined)?.title
+  useLayoutEffect(() => {
+    document.title = title ? `${title} · LearnHub` : 'LearnHub'
+  }, [title])
 }
 
 function MaintenancePage({ message, signedIn }: { message: string; signedIn: boolean }) {
@@ -119,6 +131,7 @@ export function SiteRoot() {
   const { settings } = usePublicSettings()
   const { data: me, isLoading } = useMe()
   const { pathname, search } = useLocation()
+  usePageTitle()
   useBranding(settings['general.platform_name'], settings['general.favicon_url'])
   // date format, time zone and language for every page (set during render so the first paint uses them)
   setDatePrefs(settings['general.date_format'], settings['general.time_zone'])

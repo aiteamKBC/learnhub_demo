@@ -802,7 +802,7 @@ function BonusTab() {
         <div className="flex items-start gap-3 p-4 text-sm">
           <Info className="mt-0.5 size-4 shrink-0 text-warning" />
           <p>
-            <strong>Activation is not available yet.</strong> The bonus-token funding model (F02) hasn't been approved, so the backend keeps every campaign inactive. You can draft
+            <strong>Activation is not available yet.</strong> How bonus tokens are paid for hasn't been agreed yet, so every campaign stays switched off. You can draft
             campaigns here; they won't grant tokens until a funding model is set.
           </p>
         </div>
@@ -845,7 +845,7 @@ function BonusTab() {
       </Card>
 
       <Card>
-        <CardHeader title="Draft a campaign" description="Saved inactive (activation blocked by F02)." />
+        <CardHeader title="Draft a campaign" description="Saved switched off until bonus-token funding is agreed." />
         <div className="grid gap-4 p-4 sm:grid-cols-2">
           <Field label="Name">{(p) => <Input {...p} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
           <Field label="Bonus tokens">{(p) => <Input {...p} type="number" min="1" value={tokens} onChange={(e) => setTokens(e.target.value)} />}</Field>

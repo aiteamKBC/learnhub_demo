@@ -2,7 +2,6 @@ import { Coins, Info, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { Backdrop } from '@/components/art/backdrops'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,7 +29,6 @@ export function TokenBuyPage() {
 
   return (
     <div className="relative isolate min-h-[70vh]">
-      <Backdrop variant="coins" height={520} />
       <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <PageHeader
           title="Buy tokens"

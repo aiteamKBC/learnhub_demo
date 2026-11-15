@@ -2,6 +2,31 @@
 
 Maintained by Claude Code (`/status`) and read by the planner session. Newest milestone first.
 
+## Step 2: M6 polish, code part (2026-11-15)
+
+**Tests: pending (user decision).** Not done yet, by decision: query-budget tests, Lighthouse, `e2e_demo.js`,
+the phone check, the reviewer pass and the hands-on keyboard/contrast checks (P3). Checked with `tsc -b`,
+`vite build`, ruff and `manage.py check`.
+
+- **P1 placeholders:** `ComingSoon` removed. Footer entries were plain text: now real links (catalogue, plans,
+  verify, team plans, company workspace, "Book a demo" to the plans page's sales email, teach, help). "Privacy"
+  removed: no policy page yet (client question 29). `/design` (sample data) is registered only in development.
+- **P2 performance:** vendor chunks (`vendor-react`, `vendor-query`, `vendor-radix`) via Rolldown
+  `codeSplitting`. Main entry **351 KB → 127 KB** minified (target < 300 KB). First-load JS about the same
+  (+9 KB), but vendor code now caches across deploys. Thumbnails were already lazy; remaining `<img>` are logos.
+- **P4 titles:** every route has `handle: { title }`; `SiteRoot` sets "Title · LearnHub" (layout effect, so pages
+  that set their own still win); the course page uses the course name. Before, ~70 routes shared one title.
+- **P4 wording:** the console token page showed "F02" and "the backend" to staff; reworded.
+- **P4b mockup gaps:** header search has instant suggestions (mockup 37): categories and courses as you type,
+  "Search for …", keyboard combobox (`useSearchSuggestions`). My learning (mockup 42) has a side column: counts,
+  **Upcoming deadlines** (open company requirements, soonest first; there are no assignment due dates in the
+  data model) and **My certificates** with download. No backend change.
+- **P5 artwork:** the six B2C pages drew their own backdrop on top of the layout's (doubled shapes): removed.
+  Route → artwork table completed in `frontend/README.md`.
+- **P6:** `docs/demo-script.md` (5 personas, logins as "ask Zeeka").
+- **P7:** `docs/deploy.md` (env vars by name, settings guard, migrations, webhooks, processes, `.htaccess`,
+  smoke checks). `check --deploy` locally stops on the secret key and `FRONTEND_URL` only (dev values).
+
 ## Step 1: make the B2C work usable (2026-11-15, user's own repo `learnhub_demo`)
 
 **Tests: pending (user decision, 2026-11-15: no tests or E2E until the user asks).** Checked only with

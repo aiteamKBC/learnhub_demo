@@ -1,11 +1,12 @@
-import { Search, ShoppingCart } from 'lucide-react'
-import { type FormEvent, useCallback, useState } from 'react'
+import { BookOpen, LayoutGrid, Search, ShoppingCart } from 'lucide-react'
+import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react'
 import { Outlet, useSearchParams } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Logo } from '@/components/ui/logo'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { useCategories, useSearchSuggestions } from '@/features/catalog/api'
 import { useCartCount } from '@/features/commerce/api'
 import { useMe } from '@/features/identity/auth'
 import { cn } from '@/lib/cn'
@@ -39,20 +40,115 @@ function CartButton() {
   )
 }
 
+type Suggestion = { key: string; label: string; kind: string; to: string; thumb?: string | null }
+
+/** Header search with instant suggestions (mockup 37): matching categories and courses as you
+ * type, plus "Search for …". A combobox: arrows move, Enter opens, Escape closes. */
 function SearchBox({ className, autoFocus }: { className?: string; autoFocus?: boolean }) {
   const [params] = useSearchParams()
   const [q, setQ] = useState(params.get('q') ?? '')
+  const [debounced, setDebounced] = useState(q.trim())
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(-1)
   const navigate = useNavigate()
+  const listId = useId()
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q.trim()), 200)
+    return () => clearTimeout(t)
+  }, [q])
+  const { data: cats } = useCategories()
+  const courses = useSearchSuggestions(debounced)
+  const term = q.trim()
+  const needle = debounced.toLowerCase()
+  const options: Suggestion[] =
+    term.length < 2
+      ? []
+      : [
+          ...(cats ?? []).filter((c) => needle.length >= 2 && c.name.toLowerCase().includes(needle)).slice(0, 2).map((c) => ({ key: `cat-${c.slug}`, label: c.name, kind: 'Category', to: `/courses?category=${encodeURIComponent(c.slug)}` })),
+          ...(courses.data?.items ?? []).map((c) => ({ key: c.id, label: c.title, kind: 'Course', to: `/courses/${c.slug}`, thumb: c.thumbnail_url })),
+          { key: 'search', label: `Search for “${term}”`, kind: '', to: `/courses?q=${encodeURIComponent(term)}` },
+        ]
+  const show = open && options.length > 0
+  const go = (to: string) => {
+    setOpen(false)
+    setActive(-1)
+    navigate(to)
+  }
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    navigate(q.trim() ? `/courses?q=${encodeURIComponent(q.trim())}` : '/courses')
+    if (show && active >= 0) return go(options[active]!.to)
+    go(term ? `/courses?q=${encodeURIComponent(term)}` : '/courses')
+  }
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') return setOpen(false)
+    if (!options.length || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return
+    e.preventDefault()
+    setOpen(true)
+    setActive((i) => (e.key === 'ArrowDown' ? (i + 1) % options.length : (i <= 0 ? options.length : i) - 1))
   }
   return (
-    <form role="search" onSubmit={submit} className={className}>
-      <Input icon={<Search />} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search for courses, topics or instructors" aria-label="Search courses" autoFocus={autoFocus} className="rounded-full bg-surface-2/60" />
+    <form role="search" onSubmit={submit} className={cn('relative', className)}>
+      <Input
+        icon={<Search />}
+        value={q}
+        onChange={(e) => {
+          setQ(e.target.value)
+          setOpen(true)
+          setActive(-1)
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={onKeyDown}
+        placeholder="Search for courses, topics or instructors"
+        aria-label="Search courses"
+        role="combobox"
+        aria-expanded={show}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={show && active >= 0 ? `${listId}-${active}` : undefined}
+        autoComplete="off"
+        autoFocus={autoFocus}
+        className="rounded-full bg-surface-2/60"
+      />
+      {show ? (
+        <ul id={listId} role="listbox" aria-label="Suggestions" className="absolute inset-x-0 top-full z-50 mt-2 animate-reveal overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg">
+          {options.map((o, i) => (
+            <li
+              key={o.key}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === active}
+              // mousedown, not click: it fires before the input's blur closes the list
+              onMouseDown={(e) => {
+                e.preventDefault()
+                go(o.to)
+              }}
+              onMouseEnter={() => setActive(i)}
+              className={cn('flex cursor-pointer items-center gap-3 px-3 py-2 text-sm', i === active && 'bg-primary-soft text-primary-soft-text', o.key === 'search' && 'border-t border-border text-muted')}
+            >
+              {o.kind === 'Course' ? (
+                o.thumb ? <img src={o.thumb} alt="" loading="lazy" className="h-8 w-12 shrink-0 rounded object-cover" /> : <BookOpen className="size-4 shrink-0 text-subtle" aria-hidden />
+              ) : o.kind === 'Category' ? (
+                <LayoutGrid className="size-4 shrink-0 text-primary" aria-hidden />
+              ) : (
+                <Search className="size-4 shrink-0" aria-hidden />
+              )}
+              <span className="min-w-0 flex-1 truncate font-medium">{o.label}</span>
+              {o.kind ? <span className="shrink-0 text-xs text-subtle">{o.kind}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </form>
   )
 }
+
+// Book a demo uses the same sales contact as the plans page (client question 8).
+const FOOTER: { title: string; links: { label: string; to: string }[] }[] = [
+  { title: 'Learn', links: [{ label: 'Browse courses', to: '/courses' }, { label: 'Plans', to: '/plans' }, { label: 'Verify a certificate', to: '/verify' }] },
+  { title: 'Business', links: [{ label: 'Team plans', to: '/plans' }, { label: 'Company workspace', to: '/business' }, { label: 'Book a demo', to: 'mailto:business@learnhub.example.com?subject=LearnHub%20demo' }] },
+  { title: 'LearnHub', links: [{ label: 'Teach on LearnHub', to: '/teach' }, { label: 'Help centre', to: '/support' }] },
+]
 
 /** Marketplace pages: top navigation, footer; phones get the learner bottom bar. */
 export function PublicLayout() {
@@ -113,16 +209,18 @@ export function PublicLayout() {
             <Logo />
             <p className="mt-3 max-w-xs text-sm text-muted">Courses from expert instructors, and compliance training your whole team can keep up with.</p>
           </div>
-          {[
-            ['Learn', ['Browse courses', 'Subscriptions', 'Certificates']],
-            ['Business', ['Team plans', 'Compliance tracking', 'Book a demo']],
-            ['LearnHub', ['Teach on LearnHub', 'Help centre', 'Privacy']],
-          ].map(([title, items]) => (
-            <div key={title as string}>
+          {FOOTER.map(({ title, links }) => (
+            <div key={title}>
               <p className="text-sm font-semibold">{title}</p>
               <ul className="mt-3 grid gap-2 text-sm text-muted">
-                {(items as string[]).map((i) => (
-                  <li key={i}>{i}</li>
+                {links.map(({ label, to }) => (
+                  <li key={label}>
+                    {to.startsWith('mailto:') ? (
+                      <a href={to} className="transition-colors hover:text-text">{label}</a>
+                    ) : (
+                      <Link to={to} className="transition-colors hover:text-text">{label}</Link>
+                    )}
+                  </li>
                 ))}
               </ul>
             </div>

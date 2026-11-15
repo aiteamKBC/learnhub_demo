@@ -60,6 +60,20 @@ page and faded out so content stays readable. Purely decorative (`aria-hidden`).
 | Settings | control dials |
 | Help & support | conversation bubbles |
 | Course finished (dialog) | confetti |
+| Token wallet, buy tokens, payment result | coins |
+| Unlimited plan, course bundles, review your order, orders | ribbons |
+| Business: company training, packages, seats | seats |
+| Business and learner: live training | timetable |
+| Business: purchases, refunds and changes | ribbons |
+| Console: token pricing, token wallets / packages | coins / ribbons |
+| Console: company training / live training / refunds and departures | seats / timetable / ribbons |
+
+These pages sit inside a layout that already draws the route's artwork, so they never
+render their own `<Backdrop>` (that doubled the shapes on the B2C pages until 2026-11-15).
+
+Every route also names its browser tab with `handle: { title }`; `SiteRoot` applies it
+("Title · LearnHub"), and a page may set a more specific one (the course page uses the
+course name).
 
 Pages choose their artwork in the route: `handle: { art: 'guilloche' }` (read by
 `LearnerLayout` and `WorkspaceLayout` through `lib/page-art.ts`; the area's default

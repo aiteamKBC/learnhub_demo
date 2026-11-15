@@ -9,6 +9,18 @@ export function useCategories() {
   return useQuery({ queryKey: ['categories'], queryFn: () => unwrap(api.GET('/api/v1/catalog/categories')), staleTime: 10 * 60_000 })
 }
 
+/** Instant search: the top few published courses for what the visitor is typing (2+ characters). */
+export function useSearchSuggestions(q: string) {
+  const { code } = useCurrency()
+  return useQuery({
+    queryKey: ['course-suggest', q, code],
+    queryFn: () => unwrap(api.GET('/api/v1/catalog/courses', { params: { query: { q, limit: 5, currency: code } } })),
+    enabled: q.length >= 2,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+  })
+}
+
 export function useCourses(filters: CourseFilters = {}) {
   const { code } = useCurrency()
   return useQuery({
