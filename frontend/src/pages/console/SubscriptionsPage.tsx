@@ -358,7 +358,7 @@ function PlanForm({ plan, onDone }: { plan: ConsolePlan | null; onDone: (id?: st
   return (
     <form onSubmit={submit} className="grid gap-4">
       <Field label="Plan name">{(p) => <Input {...p} required minLength={2} maxLength={80} value={v.name} onChange={set('name')} />}</Field>
-      {!plan ? <Field label="Code" hint="Lower-case letters, numbers and dashes. Used in links and reports.">{(p) => <Input {...p} required pattern="[a-z0-9-]+" maxLength={40} value={v.code} onChange={set('code')} />}</Field> : null}
+      {!plan ? <Field label="Code" hint="Lower-case letters, numbers and dashes. Used in links and reports.">{(p) => <Input {...p} required pattern="[a-z0-9\-]+" maxLength={40} value={v.code} onChange={set('code')} />}</Field> : null}
       <Field label="Short description">{(p) => <Textarea {...p} maxLength={300} value={v.description} onChange={set('description')} />}</Field>
       {!plan ? (
         <div className="grid gap-3 sm:grid-cols-2">

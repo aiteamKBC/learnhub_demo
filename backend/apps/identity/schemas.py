@@ -10,6 +10,7 @@ class MembershipOut(Schema):
     name: str
     slug: str
     role: str
+    onboarding_state: str = "active"  # M22: a company still being set up opens /business/start
     logo_url: str = ""
     primary_color: str = ""
 

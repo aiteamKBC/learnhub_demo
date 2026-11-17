@@ -11,6 +11,8 @@
 """
 
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from django.conf import settings
 from django.core.mail import send_mass_mail
@@ -22,6 +24,17 @@ from core.tenancy import tenant_context
 from .models import Notification, NotificationTemplate
 
 _PLACEHOLDER = re.compile(r"\{([a-z_]{1,40})\}")
+_muted: ContextVar[bool] = ContextVar("notify_muted", default=False)
+
+
+@contextmanager
+def muted():
+    """Nobody is told anything inside this block: no rows, no email (demo seeds)."""
+    token = _muted.set(True)
+    try:
+        yield
+    finally:
+        _muted.reset(token)
 
 
 def render(text: str, context: dict) -> str:
@@ -39,7 +52,7 @@ def notify(
     `email` overrides the template's email switch for this call (a broadcast chooses);
     the platform switch "Send email copies" (notifications.email_enabled) always wins."""
     ids = list({str(u) for u in user_ids})
-    if not ids:
+    if not ids or _muted.get():
         return []
     with tenant_context(staff=True):
         tpl = NotificationTemplate.objects.filter(code=code, is_active=True).first()

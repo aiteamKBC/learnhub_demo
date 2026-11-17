@@ -11,7 +11,7 @@ from apps.catalog import services as cat
 from apps.catalog.models import CourseInstructor
 from apps.commerce import pricing
 from apps.commerce import services as shop
-from apps.commerce.models import Coupon, CoursePrice, Invoice, Plan, PriceTier, Subscription
+from apps.commerce.models import Coupon, Invoice, Plan, PriceTier, Subscription
 from apps.identity.models import User
 from apps.learning import services as learning
 from apps.payouts import selectors, services
@@ -19,6 +19,7 @@ from apps.payouts.models import Earning, Payout
 from core.errors import ServiceError
 from core.tenancy import tenant_context
 from core.tests.base import SchemaTransactionTestCase
+from core.tests.factories import priced_for_publish
 
 ECB = """<x><Cube><Cube time="2026-11-04"><Cube currency="GBP" rate="0.87"/><Cube currency="USD" rate="1.16"/></Cube></Cube></x>"""
 
@@ -52,21 +53,21 @@ class PayoutsTest(SchemaTransactionTestCase):
             )
             sec = cat.add_section(version=self.platform.versions.get(), title="s")
             cat.add_lecture(section=sec, kind="article", title="r", body="<p>x</p>")
+            priced_for_publish(self.platform, tier=self.tier)
             cat.submit(version=self.platform.versions.get(), by=self.staff)
-            CoursePrice.objects.create(course=self.platform, tier=self.tier)
 
     def instructor_course(self, owner, slug, co=None):
         with tenant_context(user_id=owner.id):
             c = cat.create_course(title=slug, slug=slug, ownership="instructor", created_by=owner)
             sec = cat.add_section(version=c.versions.get(), title="s")
             cat.add_lecture(section=sec, kind="article", title="r", body="<p>x</p>")
+            priced_for_publish(c, tier=self.tier)
             cat.submit(version=c.versions.get(), by=owner)
             if co:  # 70/30 split between co-instructors
                 CourseInstructor.objects.filter(course=c, user=owner).update(revenue_share_bps=7000)
                 CourseInstructor.objects.create(course=c, user=co, revenue_share_bps=3000)
         with tenant_context(**self.STAFF):
             cat.approve(version=c.versions.get(), reviewer=self.staff)
-            CoursePrice.objects.create(course=c, tier=self.tier)
             c.refresh_from_db()
         return c
 

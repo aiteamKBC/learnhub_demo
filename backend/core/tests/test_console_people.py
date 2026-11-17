@@ -133,6 +133,7 @@ class ConsolePeopleTest(SchemaTransactionTestCase):
         v = self.get(f"/studio/courses/{c['id']}").json()["working_version"]["id"]
         sec = self.post(f"/studio/versions/{v}/sections", {"title": "One"}).json()["id"]
         self.post(f"/studio/sections/{sec}/lectures", {"kind": "article", "title": "Hi", "body": "<p>Hi</p>"})
+        self.send("put", f"/studio/courses/{c['id']}/price", {"free": True})  # the checklist needs a price
         self.assertEqual(self.post(f"/studio/versions/{v}/submit").json()["status"], "published")  # no review
         self.assertEqual(CourseVersion.objects.get(pk=v).status, "published")
 

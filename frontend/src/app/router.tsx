@@ -1,4 +1,4 @@
-import { BookOpen, Building2, ClipboardCheck, CreditCard, DollarSign, FileBarChart, GraduationCap, LayoutDashboard, LifeBuoy, MessageSquare, Network, ShieldCheck, UserPlus, Users, Wallet } from 'lucide-react'
+import { BookOpen, Building2, ClipboardCheck, CreditCard, DollarSign, FileBarChart, GraduationCap, LayoutDashboard, LifeBuoy, MessageSquare, Network, Plug, ShieldCheck, UserPlus, Users, Wallet } from 'lucide-react'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, Outlet } from 'react-router-dom'
 
@@ -8,6 +8,7 @@ import { PublicLayout } from '@/components/layout/PublicLayout'
 import { SiteRoot } from '@/components/layout/SiteRoot'
 import { type NavSection, WorkspaceLayout } from '@/components/layout/WorkspaceLayout'
 import { corporateBusinessNav, corporateBusinessRoutes, corporateConsoleRoutes, corporateLearnerRoutes } from '@/features/corporate/routes'
+import { programsConsoleRoutes } from '@/features/programs/routes'
 import { NotFoundPage } from '@/pages/StatusPages'
 
 import { PageSpinner, RequireAuth, RequireManager, RequireRole } from './guards'
@@ -31,6 +32,8 @@ const PlansPage = named(() => import('@/pages/shop/PlansPage'), 'PlansPage')
 const WishlistPage = named(() => import('@/pages/shop/WishlistPage'), 'WishlistPage')
 const OrdersPage = named(() => import('@/pages/shop/OrdersPage'), 'OrdersPage')
 const PlayerPage = named(() => import('@/pages/learn/PlayerPage'), 'PlayerPage')
+const ProgramRecordPage = named(() => import('@/pages/learner/ProgramRecordPage'), 'ProgramRecordPage')
+const ProgramSessionsPage = named(() => import('@/pages/learner/ProgramSessionsPage'), 'ProgramSessionsPage')
 const CertificatesPage = named(() => import('@/pages/learner/CertificatesPage'), 'CertificatesPage')
 const AchievementsPage = named(() => import('@/pages/learner/AchievementsPage'), 'AchievementsPage')
 const RequiredTrainingPage = named(() => import('@/pages/learner/RequiredTrainingPage'), 'RequiredTrainingPage')
@@ -39,6 +42,8 @@ const AccountPage = named(() => import('@/pages/learner/AccountPage'), 'AccountP
 const SupportPage = named(() => import('@/pages/learner/SupportPages'), 'SupportPage')
 const TicketPage = named(() => import('@/pages/learner/SupportPages'), 'TicketPage')
 const VerifyPage = named(() => import('@/pages/VerifyPage'), 'VerifyPage')
+const PrivacyPage = named(() => import('@/pages/legal/LegalPages'), 'PrivacyPage')
+const TermsPage = named(() => import('@/pages/legal/LegalPages'), 'TermsPage')
 const WalletPage = named(() => import('@/pages/b2c/WalletPage'), 'WalletPage')
 const TokenBuyPage = named(() => import('@/pages/b2c/TokenBuyPage'), 'TokenBuyPage')
 const TokenResultPage = named(() => import('@/pages/b2c/TokenResultPage'), 'TokenResultPage')
@@ -52,11 +57,13 @@ const ReportsPage = named(() => import('@/pages/business/ReportsPage'), 'Reports
 const PeoplePage = named(() => import('@/pages/business/PeoplePage'), 'PeoplePage')
 const PersonPage = named(() => import('@/pages/business/PersonPage'), 'PersonPage')
 const UnitsPage = named(() => import('@/pages/business/UnitsPage'), 'UnitsPage')
+const HrSystemPage = named(() => import('@/pages/business/HrSystemPage'), 'HrSystemPage')
 const InvitesPage = named(() => import('@/pages/business/InvitesPage'), 'InvitesPage')
 const LibraryPage = named(() => import('@/pages/business/LibraryPage'), 'LibraryPage')
 const AssignPage = named(() => import('@/pages/business/AssignPage'), 'AssignPage')
 const BillingPage = named(() => import('@/pages/business/BillingPage'), 'BillingPage')
 const CompanySettingsPage = named(() => import('@/pages/business/CompanySettingsPage'), 'CompanySettingsPage')
+const CompanyStartPage = named(() => import('@/pages/business/CompanyStartPage'), 'CompanyStartPage')
 const InvitePage = named(() => import('@/pages/InvitePage'), 'InvitePage')
 const TeachPage = named(() => import('@/pages/studio/TeachPage'), 'TeachPage')
 const InstructorInvitePage = named(() => import('@/pages/studio/InstructorInvitePage'), 'InstructorInvitePage')
@@ -123,6 +130,7 @@ const businessNav: NavSection[] = [
     title: 'Company',
     items: [
       { to: '/business/billing', label: 'Billing', Icon: CreditCard },
+      { to: '/business/hr-system', label: 'HR system', Icon: Plug },
       { to: '/business/settings', label: 'Settings', Icon: Building2 },
       { to: '/support', label: 'B2B support', Icon: LifeBuoy },
     ],
@@ -149,6 +157,8 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
       { path: '/plans', element: page(<PlansPage />), handle: { title: 'Plans' } },
       { path: '/verify', element: page(<VerifyPage />), handle: { title: 'Verify a certificate' } },
       { path: '/verify/:code', element: page(<VerifyPage />), handle: { title: 'Verify a certificate' } },
+      { path: '/privacy', element: page(<PrivacyPage />), handle: { title: 'Privacy policy' } },
+      { path: '/terms', element: page(<TermsPage />), handle: { title: 'Terms of use' } },
       { path: '/cart', element: <RequireAuth>{page(<CartPage />)}</RequireAuth>, handle: { title: 'Your cart' } },
       { path: '/checkout/success', element: <RequireAuth>{page(<CheckoutSuccessPage />)}</RequireAuth>, handle: { title: 'Thank you' } },
       {
@@ -162,6 +172,8 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
           { path: '/learn/certificates', element: page(<CertificatesPage />), handle: { title: 'My certificates', art: 'guilloche' } },
           { path: '/learn/achievements', element: page(<AchievementsPage />), handle: { title: 'Achievements', art: 'honeycomb' } },
           { path: '/learn/required', element: page(<RequiredTrainingPage />), handle: { title: 'Required training', art: 'checklist' } },
+          { path: '/learn/:slug/record', element: page(<ProgramRecordPage />), handle: { title: 'My record', art: 'curriculum' } },
+          { path: '/learn/:slug/sessions', element: page(<ProgramSessionsPage />), handle: { title: 'Live sessions', art: 'timetable' } },
           { path: '/notifications', element: page(<NotificationsPage />), handle: { title: 'Notifications', art: 'signal' } },
           { path: '/wishlist', element: page(<WishlistPage />), handle: { title: 'Wishlist' } },
           { path: '/account/orders', element: page(<OrdersPage />), handle: { title: 'Orders', art: 'ribbons' } },
@@ -176,6 +188,7 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
           { path: '/teach/invite/:token', element: page(<InstructorInvitePage />), handle: { title: 'Instructor invitation', art: 'blueprint' } },
           { path: '/support', element: page(<SupportPage />), handle: { title: 'Help and support', art: 'bubbles' } },
           { path: '/support/:id', element: page(<TicketPage />), handle: { title: 'Support request', art: 'bubbles' } },
+          { path: '/business/start', element: page(<CompanyStartPage />), handle: { title: 'Set up your company', art: 'seats' } },
           ...corporateLearnerRoutes,
         ],
       },
@@ -207,13 +220,14 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
       { path: 'people', element: page(<PeoplePage />), handle: { title: 'People', art: 'orgchart' } },
       { path: 'people/:memberId', element: page(<PersonPage />), handle: { title: 'Person', art: 'orgchart' } },
       { path: 'units', element: page(<UnitsPage />), handle: { title: 'Locations and teams', art: 'floorplan' } },
+      { path: 'hr-system', element: page(<HrSystemPage />), handle: { title: 'HR system', art: 'handover' } },
       { path: 'invites', element: page(<InvitesPage />), handle: { title: 'Invitations', art: 'orgchart' } },
       { path: 'library', element: page(<LibraryPage />), handle: { title: 'Course library', art: 'mosaic' } },
       { path: 'assign', element: page(<AssignPage />), handle: { title: 'Assign training', art: 'mosaic' } },
       { path: 'billing', element: page(<BillingPage />), handle: { title: 'Billing', art: 'ribbons' } },
       { path: 'settings', element: page(<CompanySettingsPage />), handle: { title: 'Company settings', art: 'dials' } },
       ...corporateBusinessRoutes,
-      { path: '*', element: <NotFoundPage /> },
+      { path: '*', element: <NotFoundPage art={false} /> },
     ],
   },
   {
@@ -237,7 +251,7 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
       { path: 'questions', element: page(<QuestionsPage />), handle: { title: 'Q&A and reviews · Studio' } },
       { path: 'revenue', element: page(<RevenuePage />), handle: { title: 'Sales and earnings · Studio', art: 'coins' } },
       { path: 'payouts', element: page(<PayoutsPage />), handle: { title: 'Payouts · Studio', art: 'coins' } },
-      { path: '*', element: <NotFoundPage /> },
+      { path: '*', element: <NotFoundPage art={false} /> },
     ],
   },
   {
@@ -267,10 +281,11 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
       { path: 'settings', element: page(<ConsoleSettingsPage />), handle: { title: 'Settings · Console', art: 'dials' } },
       { path: 'audit', element: page(<ConsoleAuditPage />), handle: { title: 'Audit log · Console' } },
       ...corporateConsoleRoutes,
+      ...programsConsoleRoutes,
       { path: 'token-pricing', element: page(<ConsoleTokenPricingPage />), handle: { title: 'Token pricing · Console', art: 'coins' } },
       { path: 'wallets', element: page(<ConsoleWalletsPage />), handle: { title: 'Token wallets · Console', art: 'coins' } },
       { path: 'packages', element: page(<ConsolePackagesPage />), handle: { title: 'Packages · Console', art: 'ribbons' } },
-      { path: '*', element: <NotFoundPage /> },
+      { path: '*', element: <NotFoundPage art={false} /> },
     ],
   },
   { path: '*', element: <Outlet /> },

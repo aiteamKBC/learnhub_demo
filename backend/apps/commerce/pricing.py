@@ -284,6 +284,25 @@ def regional_amounts(prices: dict, code: str, country: str) -> dict:
 _UNSET = object()
 
 
+def tier_amounts(tier_ids, code: str, exponent: int) -> dict:
+    """{tier_id: amount_minor} in a currency (one query; a brand-new currency before the
+    FX job ran is converted on the fly). Courses (quote) and program offers share it."""
+    tier_ids = set(tier_ids)
+    amounts = dict(
+        PriceTierAmount.objects.filter(tier_id__in=tier_ids, currency_id=code).values_list(
+            "tier_id", "amount_minor"
+        )
+    )
+    missing = tier_ids - set(amounts)
+    if missing:
+        rate = latest_rate(code)
+        for t in PriceTier.objects.filter(id__in=missing):
+            amounts[t.id] = (
+                t.gbp_minor if code == BASE else natural_minor(to_major(t.gbp_minor, 2) * rate, exponent)
+            )
+    return amounts
+
+
 def quote(course_ids, code: str, now=None, country=_UNSET) -> dict:
     """{course_id: {"free", "list_minor", "sale_minor"}} for a page of courses.
     At most 4 queries, whatever the number of courses (5 with a regional price lookup).
@@ -301,21 +320,7 @@ def quote(course_ids, code: str, now=None, country=_UNSET) -> dict:
             category_id=F("course__category_id")
         )
     }
-    tier_ids = {p.tier_id for p in prices.values() if p.tier_id}
-    amounts = dict(
-        PriceTierAmount.objects.filter(tier_id__in=tier_ids, currency_id=code).values_list(
-            "tier_id", "amount_minor"
-        )
-    )
-    missing = tier_ids - set(amounts)
-    if missing:  # a brand-new currency before the job ran: convert on the fly
-        rate = latest_rate(code)
-        for t in PriceTier.objects.filter(id__in=missing):
-            amounts[t.id] = (
-                t.gbp_minor
-                if code == BASE
-                else natural_minor(to_major(t.gbp_minor, 2) * rate, currency["exponent"])
-            )
+    amounts = tier_amounts({p.tier_id for p in prices.values() if p.tier_id}, code, currency["exponent"])
     regional = regional_amounts(prices, code, country)
     campaigns = [lv for lv in promotions.live([Promotion.Kind.CAMPAIGN], now) if lv.public]
     out = {}

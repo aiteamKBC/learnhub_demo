@@ -6,6 +6,7 @@ from apps.commerce.models import PriceTier
 from apps.identity.models import User
 from core.tenancy import tenant_context
 from core.tests.base import SchemaTransactionTestCase
+from core.tests.factories import priced_for_publish
 
 
 class TokenPricingColumnsTests(SchemaTransactionTestCase):
@@ -28,6 +29,7 @@ class TokenPricingColumnsTests(SchemaTransactionTestCase):
         v = self.course.versions.get()
         sec = cat.add_section(version=v, title="S")
         self.lec = cat.add_lecture(section=sec, kind="article", title="L0", body="hi")
+        priced_for_publish(self.course)
         cat.submit(version=v, by=self.staff)
         self.course.refresh_from_db()
 

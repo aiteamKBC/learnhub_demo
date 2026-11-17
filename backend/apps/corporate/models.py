@@ -588,3 +588,173 @@ class LiveAttendee(TenantModel):
             models.Index(fields=["org", "cohort_company"], name="ix_attendee_org_cc"),
             models.Index(fields=["user", "status"], name="ix_attendee_user"),
         ]
+
+
+# ================================================================ M22: program seats (D8–D11, D22)
+# Separate from SeatPurchase/SeatAllocation (course seats): their offering and allocation
+# columns are NOT NULL, and Neon tables may only gain columns. See docs/milestones/M22-*.md.
+
+
+class ProgramSeatOrder(TenantModel):
+    """A company's order for program seats. One draft at a time; paid by card (D9)."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Being built"
+        PENDING = "pending", "Waiting for payment"
+        PAID = "paid", "Paid"
+        EXPIRED = "expired", "Payment not completed"
+
+    buyer = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    currency = models.CharField(max_length=3)
+    total_minor = models.BigIntegerField(default=0)
+    stripe_session_id = models.CharField(max_length=255, blank=True)
+    payment_intent = models.CharField(max_length=255, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = table(SCHEMA, "program_seat_orders")
+        constraints = [
+            models.UniqueConstraint(fields=["org", "id"], name="uq_pso_org_id"),
+            # one order being built (or paid for) at a time per company
+            models.UniqueConstraint(
+                fields=["org"], condition=Q(status__in=["draft", "pending"]), name="uq_pso_open_per_org"
+            ),
+            models.CheckConstraint(condition=Q(total_minor__gte=0), name="ck_pso_total"),
+        ]
+        indexes = [
+            models.Index(fields=["org", "-created_at"], name="ix_pso_org_created"),
+            models.Index(fields=["stripe_session_id"], name="ix_pso_session",
+                         condition=~Q(stripe_session_id="")),
+        ]  # fmt: skip
+
+
+class ProgramSeatLine(TenantModel):
+    """Seats for one offer (whole program or one module, live or recorded: D10). A live line
+    names its intake (cohort)."""
+
+    order = models.ForeignKey(ProgramSeatOrder, on_delete=models.CASCADE, related_name="lines")
+    offer = models.ForeignKey("commerce.ProgramOffer", on_delete=models.PROTECT, related_name="+")
+    cohort = models.ForeignKey("delivery.Cohort", on_delete=models.PROTECT, null=True, blank=True,
+                               related_name="+")  # fmt: skip
+    seats = models.PositiveIntegerField()
+    unit_minor = models.BigIntegerField()
+    total_minor = models.BigIntegerField()
+
+    class Meta:
+        db_table = table(SCHEMA, "program_seat_lines")
+        constraints = [
+            models.UniqueConstraint(fields=["org", "id"], name="uq_psl_org_id"),
+            models.CheckConstraint(condition=Q(seats__gte=1, seats__lte=500), name="ck_psl_seats"),
+            models.CheckConstraint(condition=Q(unit_minor__gte=0, total_minor__gte=0), name="ck_psl_amounts"),
+        ]
+        indexes = [models.Index(fields=["org", "order"], name="ix_psl_order")]
+
+
+class ProgramSeatAllocation(TenantModel):
+    """One employee holding one seat of a line. Never deleted: a released or swapped seat
+    stays as history (the old learner's progress stays on their enrolment)."""
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Holding the seat"
+        RELEASED = "released", "Released before starting"
+        SWAPPED = "swapped", "Swapped to someone else"
+
+    line = models.ForeignKey(ProgramSeatLine, on_delete=models.PROTECT, related_name="allocations")
+    member = models.ForeignKey("org.OrgMember", on_delete=models.PROTECT, related_name="+")
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    enrollment = models.ForeignKey("learning.Enrollment", on_delete=models.PROTECT, related_name="+")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    allocated_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    released_at = models.DateTimeField(null=True, blank=True)
+    released_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        db_table = table(SCHEMA, "program_seat_allocations")
+        constraints = [
+            models.UniqueConstraint(fields=["org", "id"], name="uq_psa_org_id"),
+            models.UniqueConstraint(fields=["line", "user"], condition=Q(status="active"),
+                                    name="uq_psa_active_line_user"),
+        ]  # fmt: skip
+        indexes = [
+            models.Index(fields=["org", "line", "status"], name="ix_psa_line_status"),
+            models.Index(fields=["org", "status", "id"], name="ix_psa_org_status"),
+            models.Index(fields=["user"], name="ix_psa_user"),
+        ]
+
+
+class SeatSwapRequest(TenantModel):
+    """D11: the company approves (owner, admin or the line manager), then the provider."""
+
+    class Status(models.TextChoices):
+        PENDING_COMPANY = "pending_company", "Waiting for the company"
+        PENDING_PROVIDER = "pending_provider", "Waiting for the provider"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        CANCELLED = "cancelled", "Cancelled"
+
+    allocation = models.ForeignKey(ProgramSeatAllocation, on_delete=models.PROTECT, related_name="swaps")
+    to_member = models.ForeignKey("org.OrgMember", on_delete=models.PROTECT, related_name="+")
+    requested_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    reason = models.TextField(blank=True)
+    after_cutoff = models.BooleanField(default=False)
+    status = models.CharField(max_length=16, choices=Status.choices)
+    company_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    company_at = models.DateTimeField(null=True, blank=True)
+    provider_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    provider_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.TextField(blank=True)
+    new_allocation = models.ForeignKey(
+        ProgramSeatAllocation, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        db_table = table(SCHEMA, "seat_swap_requests")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["allocation"],
+                condition=Q(status__in=["pending_company", "pending_provider"]),
+                name="uq_swap_open_per_allocation",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["org", "status", "-created_at"], name="ix_swap_org_status"),
+            models.Index(fields=["status", "created_at"], name="ix_swap_status",
+                         condition=Q(status="pending_provider")),
+        ]  # fmt: skip
+
+
+class ProgramSeatEvent(TenantModel):
+    """The audit trail for program seats: every allocation, release and swap step."""
+
+    class Action(models.TextChoices):
+        ORDERED = "ordered", "Order paid"
+        ALLOCATED = "allocated", "Seat allocated"
+        RELEASED = "released", "Seat released"
+        SWAP_REQUESTED = "swap_requested", "Swap requested"
+        SWAP_COMPANY_APPROVED = "swap_company_ok", "Swap approved by the company"
+        SWAP_APPROVED = "swap_approved", "Swap approved by the provider"
+        SWAP_REJECTED = "swap_rejected", "Swap rejected"
+        SWAP_CANCELLED = "swap_cancelled", "Swap cancelled"
+
+    line = models.ForeignKey(
+        ProgramSeatLine, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    allocation = models.ForeignKey(
+        ProgramSeatAllocation, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    swap = models.ForeignKey(
+        SeatSwapRequest, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    action = models.CharField(max_length=16, choices=Action.choices)
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    target_user = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    previous_user = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    note = models.TextField(blank=True)
+
+    class Meta:
+        db_table = table(SCHEMA, "program_seat_events")
+        indexes = [
+            models.Index(fields=["org", "-created_at"], name="ix_pse_org_created"),
+            models.Index(fields=["org", "allocation"], name="ix_pse_allocation"),
+        ]

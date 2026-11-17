@@ -1,16 +1,22 @@
-import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronDown, Eye, EyeOff, GripVertical, Info, ListTree, MoreHorizontal, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react'
+import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronDown, Eye, EyeOff, GripVertical, Info, Layers, ListTree, MoreHorizontal, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from '@/components/ui/menu'
-import { LECTURE_KINDS, useCurriculum, type StudioCourse, type StudioLecture, type StudioSection } from '@/features/studio/api'
+import { LECTURE_KINDS, useCurriculum, type StudioCourse, type StudioLecture, type StudioModule, type StudioSection } from '@/features/studio/api'
 import { cn } from '@/lib/cn'
 
 import { KIND_META, errText, kindMeta, moved, type LectureKind } from './shared'
 
 type Drag = { type: 'section'; id: string } | { type: 'lecture'; id: string; sectionId: string }
+
+/** Words for the two content levels: a short course has modules and lessons; a program
+ * (M18) has modules that hold WEEKS, and weeks hold COMPONENTS. */
+type Words = { section: string; sections: string; lecture: string; lectures: string }
+const SHORT: Words = { section: 'Module', sections: 'Modules', lecture: 'Lesson', lectures: 'lessons' }
+const PROGRAM: Words = { section: 'Week', sections: 'Weeks', lecture: 'Component', lectures: 'components' }
 
 /** The right-hand column: modules and lessons. Reorder by drag (mouse) or from each
  * row's menu (keyboard and touch); add, rename and delete; pick a lesson to edit it. */
@@ -27,6 +33,9 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
   const server = version?.sections
   const editable = !!version?.editable
   const c = useCurriculum(course.id)
+  const program = course.kind === 'program'
+  const words = program ? PROGRAM : SHORT
+  const modules = version?.modules ?? []
 
   // Reorders show at once; the override is dropped as soon as fresh server data arrives.
   const [override, setOverride] = useState<{ base: StudioSection[]; value: StudioSection[] } | null>(null)
@@ -53,12 +62,15 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
 
   const fail = (e: unknown) => (setOverride(null), setError(errText(e)))
 
-  const reorderSections = (next: StudioSection[]) => {
+  const reorderSections = (next: StudioSection[], moduleId?: string | null) => {
     if (!version || !server) return
     setError('')
     setOverride({ base: server, value: next })
-    c.orderSections.mutate({ versionId: version.id, ids: next.map((s) => s.id) }, { onError: fail })
+    if (program && moduleId) c.orderWeeks.mutate({ moduleId, ids: next.filter((s) => s.module_id === moduleId).map((s) => s.id) }, { onError: fail })
+    else c.orderSections.mutate({ versionId: version.id, ids: next.map((s) => s.id) }, { onError: fail })
   }
+  /** Programs: weeks only swap with weeks of the same module (the ••• menu and drag). */
+  const sameModule = (a?: StudioSection, b?: StudioSection) => !program || (!!a && !!b && a.module_id === b.module_id)
   const reorderLectures = (sectionId: string, next: StudioLecture[]) => {
     if (!server) return
     setError('')
@@ -66,7 +78,8 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
     c.orderLectures.mutate({ sectionId, ids: next.map((l) => l.id) }, { onError: fail })
   }
   const moveSection = (i: number, d: -1 | 1) => {
-    reorderSections(moved(sections, i, i + d))
+    if (!sameModule(sections[i], sections[i + d])) return
+    reorderSections(moved(sections, i, i + d), sections[i]!.module_id)
     setAnnounce(`${sections[i]!.title} moved to position ${i + d + 1} of ${sections.length}.`)
   }
   const moveLecture = (s: StudioSection, i: number, d: -1 | 1) => {
@@ -92,7 +105,10 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
     e.preventDefault()
     const from = sections.findIndex((s) => s.id === drag.id)
     const to = sections.findIndex((s) => s.id === targetId)
-    if (from >= 0 && to >= 0 && from !== to) reorderSections(moved(sections, from, to))
+    if (from >= 0 && to >= 0 && from !== to) {
+      if (sameModule(sections[from], sections[to])) reorderSections(moved(sections, from, to), sections[from]!.module_id)
+      else if (sections[to]!.module_id) c.moveWeek.mutate({ sectionId: drag.id, moduleId: sections[to]!.module_id! }, { onError: fail }) // goes last in that module
+    }
     onDragEnd()
   }
   const overLecture = (e: DragEvent, id: string) => {
@@ -134,38 +150,31 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
     const title = newModule?.trim()
     if (!title || !version) return
     setError('')
+    if (program) return c.addModule.mutate({ versionId: version.id, title }, { onSuccess: () => setNewModule(null), onError: fail })
     c.addSection.mutate(
       { versionId: version.id, title },
       { onSuccess: (r) => (setNewModule(null), setOpen((o) => new Set(o).add(r.id))), onError: fail },
     )
+  }
+  const [addingTo, setAddingTo] = useState<string | null>(null) // which module's "Add week" is saving
+  const addWeek = (moduleId: string, title: string, after: () => void) => {
+    if (!version) return
+    setError('')
+    setAddingTo(moduleId)
+    c.addSection.mutate({ versionId: version.id, title, moduleId }, { onSuccess: (r) => (after(), setOpen((o) => new Set(o).add(r.id))), onError: fail })
+  }
+  const moveModule = (i: number, d: -1 | 1) => {
+    if (!version) return
+    setError('')
+    c.orderModules.mutate({ versionId: version.id, ids: moved(modules, i, i + d).map((m) => m.id) }, { onError: fail })
+    setAnnounce(`${modules[i]!.title} moved to position ${i + d + 1} of ${modules.length}.`)
   }
   const startModule = () => {
     setNewModule('')
     window.setTimeout(() => newRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50)
   }
 
-  return (
-    <div className="grid content-start gap-4">
-      <Card className="grid gap-4 p-4">
-        <p className="sr-only" aria-live="polite">{announce}</p>
-        <div className="flex items-start gap-2.5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-text"><ListTree className="size-5" aria-hidden /></span>
-          <div className="min-w-0">
-            <h2 className="text-[17px] font-semibold tracking-tight">Course content</h2>
-            <p className="text-[13px] text-muted">{editable ? 'Organise your course into modules and lessons. Drag and drop to reorder.' : 'Modules and lessons in this version.'}</p>
-          </div>
-        </div>
-        {editable ? (
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="button" onClick={startModule}><Plus /> Add module</Button>
-            <Button type="button" variant="secondary" onClick={onBulk} disabled={!sections.length} title={sections.length ? undefined : 'Add a module first'}><UploadCloud /> Bulk upload</Button>
-          </div>
-        ) : null}
-        {error ? <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-[13px] text-danger">{error}</p> : null}
-
-        {sections.length ? (
-          <ol className="stagger grid gap-2" aria-label="Modules">
-            {sections.map((s, si) => {
+  const renderSection = (s: StudioSection, si: number) => {
               const isOpen = open.has(s.id)
               return (
                 <li
@@ -182,11 +191,16 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
                     section={s}
                     index={si}
                     count={sections.length}
+                    words={words}
+                    canUp={si > 0 && sameModule(s, sections[si - 1])}
+                    canDown={si < sections.length - 1 && sameModule(s, sections[si + 1])}
                     open={isOpen}
                     editable={editable}
                     courseId={course.id}
                     onToggle={() => toggle(s.id)}
                     onMove={(d) => moveSection(si, d)}
+                    moveTargets={program ? modules.filter((m) => m.id !== s.module_id) : undefined}
+                    onMoveTo={(moduleId) => c.moveWeek.mutate({ sectionId: s.id, moduleId }, { onError: fail })}
                     onDragStart={(e) => onDragStart(e, { type: 'section', id: s.id })}
                     onDragEnd={onDragEnd}
                     onDeleted={() => onDeleted(null, s.id)}
@@ -201,6 +215,8 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
                               key={l.id}
                               lecture={l}
                               number={`${si + 1}.${li + 1}`}
+                              noun={words.lecture}
+                              program={program}
                               first={li === 0}
                               last={li === s.lectures.length - 1}
                               editable={editable}
@@ -221,14 +237,72 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
                           ))}
                         </ul>
                       ) : (
-                        <p className="px-2 py-3 text-center text-[13px] text-muted">{editable ? 'No lessons yet.' : 'No lessons.'}</p>
+                        <p className="px-2 py-3 text-center text-[13px] text-muted">{editable ? `No ${words.lectures} yet.` : `No ${words.lectures}.`}</p>
                       )}
-                      {editable ? <AddLessonMenu title={s.title} onAdd={(kind) => onAdd({ sectionId: s.id, kind })} /> : null}
+                      {editable ? <AddLessonMenu title={s.title} noun={words.lecture} onAdd={(kind) => onAdd({ sectionId: s.id, kind })} /> : null}
                     </div>
                   ) : null}
                 </li>
               )
-            })}
+  }
+
+  return (
+    <div className="grid content-start gap-4">
+      <Card className="grid gap-4 p-4">
+        <p className="sr-only" aria-live="polite">{announce}</p>
+        <div className="flex items-start gap-2.5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-text"><ListTree className="size-5" aria-hidden /></span>
+          <div className="min-w-0">
+            <h2 className="text-[17px] font-semibold tracking-tight">{program ? 'Program content' : 'Course content'}</h2>
+            <p className="text-[13px] text-muted">
+              {program
+                ? editable
+                  ? 'Modules hold weeks, and weeks hold components. Drag and drop to reorder.'
+                  : 'Modules, weeks and components in this version.'
+                : editable
+                  ? 'Organise your course into modules and lessons. Drag and drop to reorder.'
+                  : 'Modules and lessons in this version.'}
+            </p>
+          </div>
+        </div>
+        {editable ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" onClick={startModule}><Plus /> Add module</Button>
+            <Button type="button" variant="secondary" onClick={onBulk} disabled={!sections.length} title={sections.length ? undefined : program ? 'Add a week first' : 'Add a module first'}><UploadCloud /> Bulk upload</Button>
+          </div>
+        ) : null}
+        {error ? <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-[13px] text-danger">{error}</p> : null}
+
+        {program ? (
+          modules.length ? (
+            <ol className="stagger grid gap-3" aria-label="Modules">
+              {modules.map((m, mi) => (
+                <ModuleGroup
+                  key={m.id}
+                  module={m}
+                  index={mi}
+                  count={modules.length}
+                  editable={editable}
+                  courseId={course.id}
+                  weeks={sections.filter((sec) => sec.module_id === m.id)}
+                  renderWeek={(sec) => renderSection(sec, sections.indexOf(sec))}
+                  onMove={(d) => moveModule(mi, d)}
+                  onAddWeek={(title, after) => addWeek(m.id, title, after)}
+                  adding={c.addSection.isPending && addingTo === m.id}
+                  onError={fail}
+                />
+              ))}
+            </ol>
+          ) : newModule === null ? (
+            <div className="grid justify-items-center gap-1 rounded-lg border border-dashed border-border px-4 py-6 text-center">
+              <Layers className="size-6 text-subtle" aria-hidden />
+              <p className="text-sm font-medium">Start with a module</p>
+              <p className="text-[13px] text-muted">Each module holds weeks, and each week holds components.</p>
+            </div>
+          ) : null
+        ) : sections.length ? (
+          <ol className="stagger grid gap-2" aria-label="Modules">
+            {sections.map((s, si) => renderSection(s, si))}
           </ol>
         ) : newModule === null ? (
           <div className="grid justify-items-center gap-1 rounded-lg border border-dashed border-border px-4 py-6 text-center">
@@ -252,7 +326,7 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
             />
             <div className="flex flex-wrap justify-end gap-2">
               <Button type="button" size="sm" variant="ghost" onClick={() => setNewModule(null)}>Cancel</Button>
-              <Button type="submit" size="sm" loading={c.addSection.isPending} disabled={!newModule.trim()}><Plus /> Add module</Button>
+              <Button type="submit" size="sm" loading={c.addSection.isPending || c.addModule.isPending} disabled={!newModule.trim()}><Plus /> Add module</Button>
             </div>
           </form>
         ) : null}
@@ -262,10 +336,10 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
         <Card className="grid gap-2.5 bg-primary-soft/25 p-4">
           <h3 className="flex items-center gap-2 text-sm font-semibold"><Info className="size-4 text-primary" aria-hidden /> Tips</h3>
           <ul className="grid gap-2 text-[13px]">
-            <Tip>Drag and drop modules and lessons to reorder them.</Tip>
-            <Tip>Use the ••• menu to move a lesson with the keyboard.</Tip>
+            <Tip>{program ? 'Drag weeks and components to reorder them. Drop a week on another module to move it there.' : 'Drag and drop modules and lessons to reorder them.'}</Tip>
+            <Tip>Use the ••• menu to move {program ? 'a component' : 'a lesson'} with the keyboard.</Tip>
             <Tip>Use Bulk upload to add several videos at once.</Tip>
-            <Tip>Mark a lesson as Free preview so anyone can try it.</Tip>
+            {program ? <Tip>Live sessions get their dates from each group's timetable.</Tip> : <Tip>Mark a lesson as Free preview so anyone can try it.</Tip>}
           </ul>
         </Card>
       ) : null}
@@ -282,11 +356,11 @@ function Tip({ children }: { children: ReactNode }) {
   )
 }
 
-function AddLessonMenu({ title, onAdd }: { title: string; onAdd: (kind: LectureKind) => void }) {
+function AddLessonMenu({ title, noun, onAdd }: { title: string; noun: string; onAdd: (kind: LectureKind) => void }) {
   return (
     <Menu>
       <MenuTrigger asChild>
-        <Button type="button" size="sm" variant="ghost" className="mt-1 w-full justify-start text-primary hover:text-primary"><Plus /> Add lesson</Button>
+        <Button type="button" size="sm" variant="ghost" className="mt-1 w-full justify-start text-primary hover:text-primary"><Plus /> Add {noun.toLowerCase()}</Button>
       </MenuTrigger>
       <MenuContent className="w-64">
         <MenuLabel className="px-2.5 py-1.5 text-xs font-medium text-muted">Add to “{title}”</MenuLabel>
@@ -308,15 +382,21 @@ function AddLessonMenu({ title, onAdd }: { title: string; onAdd: (kind: LectureK
 }
 
 // ---------------------------------------------------------------- module header
-function ModuleHeader({ section: s, index, count, open, editable, courseId, onToggle, onMove, onDragStart, onDragEnd, onDeleted, onError }: {
+function ModuleHeader({ section: s, index, words, canUp, canDown, open, editable, courseId, onToggle, onMove, moveTargets, onMoveTo, onDragStart, onDragEnd, onDeleted, onError }: {
   section: StudioSection
   index: number
   count: number
+  words: Words
+  canUp: boolean
+  canDown: boolean
   open: boolean
   editable: boolean
   courseId: string
   onToggle: () => void
   onMove: (d: -1 | 1) => void
+  /** Programs: other modules this week can move to (the keyboard and touch way to do it). */
+  moveTargets?: StudioModule[]
+  onMoveTo?: (moduleId: string) => void
   onDragStart: (e: DragEvent) => void
   onDragEnd: () => void
   onDeleted: () => void
@@ -335,7 +415,7 @@ function ModuleHeader({ section: s, index, count, open, editable, courseId, onTo
     return (
       <div className="flex min-w-0 items-center gap-1.5 p-2">
         <Input
-          aria-label="Module title"
+          aria-label={`${words.section} title`}
           value={renaming}
           maxLength={200}
           autoFocus
@@ -346,7 +426,7 @@ function ModuleHeader({ section: s, index, count, open, editable, courseId, onTo
             if (e.key === 'Escape') setRenaming(null)
           }}
         />
-        <Button type="button" size="icon-sm" variant="soft" aria-label="Save module title" loading={c.renameSection.isPending} onClick={rename}><Check /></Button>
+        <Button type="button" size="icon-sm" variant="soft" aria-label={`Save ${words.section.toLowerCase()} title`} loading={c.renameSection.isPending} onClick={rename}><Check /></Button>
         <Button type="button" size="icon-sm" variant="ghost" aria-label="Cancel" onClick={() => setRenaming(null)}><X /></Button>
       </div>
     )
@@ -365,28 +445,37 @@ function ModuleHeader({ section: s, index, count, open, editable, courseId, onTo
         aria-controls={open ? `module-${s.id}` : undefined}
         className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-2 text-left focus-visible:outline-2 focus-visible:outline-primary"
       >
-        <span className="min-w-0 flex-1 text-sm font-semibold break-words">Module {index + 1}: {s.title}</span>
-        <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-muted tabular">{n} {n === 1 ? 'lesson' : 'lessons'}</span>
+        <span className="min-w-0 flex-1 text-sm font-semibold break-words">{words.section} {index + 1}: {s.title}</span>
+        <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-muted tabular">{n} {n === 1 ? words.lecture.toLowerCase() : words.lectures}</span>
         <ChevronDown className={cn('size-4 shrink-0 text-muted transition-transform duration-200 motion-reduce:transition-none', open ? 'rotate-180' : '-rotate-90')} aria-hidden />
       </button>
       {editable ? (
         <Menu>
           <MenuTrigger asChild>
-            <Button type="button" size="icon-sm" variant="ghost" aria-label={`More actions for module ${s.title}`}><MoreHorizontal /></Button>
+            <Button type="button" size="icon-sm" variant="ghost" aria-label={`More actions for ${words.section.toLowerCase()} ${s.title}`}><MoreHorizontal /></Button>
           </MenuTrigger>
           <MenuContent>
             <MenuItem onSelect={() => setRenaming(s.title)}><Pencil aria-hidden /> Rename</MenuItem>
-            <MenuItem disabled={index === 0} onSelect={() => onMove(-1)}><ArrowUp aria-hidden /> Move up</MenuItem>
-            <MenuItem disabled={index === count - 1} onSelect={() => onMove(1)}><ArrowDown aria-hidden /> Move down</MenuItem>
+            <MenuItem disabled={!canUp} onSelect={() => onMove(-1)}><ArrowUp aria-hidden /> Move up</MenuItem>
+            <MenuItem disabled={!canDown} onSelect={() => onMove(1)}><ArrowDown aria-hidden /> Move down</MenuItem>
+            {moveTargets?.length ? (
+              <>
+                <MenuSeparator />
+                <MenuLabel>Move to module</MenuLabel>
+                {moveTargets.map((m) => (
+                  <MenuItem key={m.id} onSelect={() => onMoveTo?.(m.id)}><Layers aria-hidden /> {m.title}</MenuItem>
+                ))}
+              </>
+            ) : null}
             <MenuSeparator />
             <MenuItem
               className="text-danger [&_svg]:text-danger"
               onSelect={() => {
-                const msg = n ? `Delete "${s.title}" and its ${n} ${n === 1 ? 'lesson' : 'lessons'}?` : `Delete "${s.title}"?`
+                const msg = n ? `Delete "${s.title}" and its ${n} ${n === 1 ? words.lecture.toLowerCase() : words.lectures}?` : `Delete "${s.title}"?`
                 if (window.confirm(msg)) c.deleteSection.mutate(s.id, { onSuccess: onDeleted, onError })
               }}
             >
-              <Trash2 aria-hidden /> Delete module
+              <Trash2 aria-hidden /> Delete {words.section.toLowerCase()}
             </MenuItem>
           </MenuContent>
         </Menu>
@@ -395,10 +484,106 @@ function ModuleHeader({ section: s, index, count, open, editable, courseId, onTo
   )
 }
 
+// ---------------------------------------------------------------- program module (M18)
+/** One program module: its header (rename, reorder, delete when empty), its weeks and an
+ * inline "Add week" form. Weeks render through the course list's own section row. */
+function ModuleGroup({ module: m, index, count, editable, courseId, weeks, renderWeek, onMove, onAddWeek, adding, onError }: {
+  module: StudioModule
+  index: number
+  count: number
+  editable: boolean
+  courseId: string
+  weeks: StudioSection[]
+  renderWeek: (s: StudioSection) => ReactNode
+  onMove: (d: -1 | 1) => void
+  onAddWeek: (title: string, after: () => void) => void
+  adding: boolean
+  onError: (e: unknown) => void
+}) {
+  const c = useCurriculum(courseId)
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [newWeek, setNewWeek] = useState<string | null>(null)
+  const rename = () => {
+    const title = renaming?.trim()
+    if (title) c.renameModule.mutate({ moduleId: m.id, title }, { onSuccess: () => setRenaming(null), onError })
+  }
+  return (
+    <li className="min-w-0 rounded-xl border border-border bg-surface-2/50 p-2">
+      {renaming !== null ? (
+        <div className="flex min-w-0 items-center gap-1.5 p-1">
+          <Input
+            aria-label="Module title"
+            value={renaming}
+            maxLength={200}
+            autoFocus
+            className="h-9"
+            onChange={(e) => setRenaming(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                rename()
+              }
+              if (e.key === 'Escape') setRenaming(null)
+            }}
+          />
+          <Button type="button" size="icon-sm" variant="soft" aria-label="Save module title" loading={c.renameModule.isPending} onClick={rename}><Check /></Button>
+          <Button type="button" size="icon-sm" variant="ghost" aria-label="Cancel" onClick={() => setRenaming(null)}><X /></Button>
+        </div>
+      ) : (
+        <div className="flex min-w-0 items-center gap-2 px-1.5 py-1">
+          <Layers className="size-4 shrink-0 text-primary" aria-hidden />
+          <h3 className="min-w-0 flex-1 text-sm font-semibold break-words">
+            <span className="mr-1 text-xs font-medium tracking-wide text-muted uppercase">Module {index + 1}</span> {m.title}
+          </h3>
+          <span className="shrink-0 text-[11px] text-muted tabular">{weeks.length} {weeks.length === 1 ? 'week' : 'weeks'}</span>
+          {editable ? (
+            <Menu>
+              <MenuTrigger asChild>
+                <Button type="button" size="icon-sm" variant="ghost" aria-label={`More actions for module ${m.title}`}><MoreHorizontal /></Button>
+              </MenuTrigger>
+              <MenuContent>
+                <MenuItem onSelect={() => setRenaming(m.title)}><Pencil aria-hidden /> Rename</MenuItem>
+                <MenuItem disabled={index === 0} onSelect={() => onMove(-1)}><ArrowUp aria-hidden /> Move up</MenuItem>
+                <MenuItem disabled={index === count - 1} onSelect={() => onMove(1)}><ArrowDown aria-hidden /> Move down</MenuItem>
+                <MenuSeparator />
+                <MenuItem
+                  className="text-danger [&_svg]:text-danger"
+                  disabled={weeks.length > 0}
+                  onSelect={() => window.confirm(`Delete the module "${m.title}"?`) && c.deleteModule.mutate(m.id, { onError })}
+                >
+                  <Trash2 aria-hidden /> {weeks.length ? 'Delete (move its weeks first)' : 'Delete module'}
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          ) : null}
+        </div>
+      )}
+      {weeks.length ? <ol className="mt-1.5 grid gap-2" aria-label={`Weeks in ${m.title}`}>{weeks.map(renderWeek)}</ol> : <p className="px-2 py-2 text-[13px] text-muted">No weeks yet.</p>}
+      {editable ? (
+        newWeek === null ? (
+          <Button type="button" size="sm" variant="ghost" className="mt-1 w-full justify-start text-primary hover:text-primary" onClick={() => setNewWeek('')}>
+            <Plus /> Add week
+          </Button>
+        ) : (
+          <form className="mt-2 grid animate-reveal gap-2 rounded-lg border border-dashed border-border-strong bg-surface p-2.5" onSubmit={(e) => (e.preventDefault(), newWeek.trim() && onAddWeek(newWeek.trim(), () => setNewWeek(null)))}>
+            <Input aria-label={`New week title in ${m.title}`} autoFocus value={newWeek} maxLength={200} placeholder="e.g. Leading change" onChange={(e) => setNewWeek(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && setNewWeek(null)} />
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={() => setNewWeek(null)}>Cancel</Button>
+              <Button type="submit" size="sm" loading={adding} disabled={!newWeek.trim()}><Plus /> Add week</Button>
+            </div>
+          </form>
+        )
+      ) : null}
+    </li>
+  )
+}
+
 // ---------------------------------------------------------------- lesson row
-function LessonRow({ lecture: l, number, first, last, editable, courseId, selected, highlighted, dragging, dropTarget, onOpen, onMove, onDragStart, onDragEnd, onDragOver, onDrop, onDeleted, onError }: {
+function LessonRow({ lecture: l, number, noun, program, first, last, editable, courseId, selected, highlighted, dragging, dropTarget, onOpen, onMove, onDragStart, onDragEnd, onDragOver, onDrop, onDeleted, onError }: {
   lecture: StudioLecture
   number: string
+  noun: string
+  program: boolean
   first: boolean
   last: boolean
   editable: boolean
@@ -422,7 +607,7 @@ function LessonRow({ lecture: l, number, first, last, editable, courseId, select
   const [pending, setPending] = useState<boolean | null>(null)
   const preview = pending ?? l.is_preview
   const [renaming, setRenaming] = useState<string | null>(null)
-  const warning = lessonWarning(l)
+  const warning = lessonWarning(l, program)
 
   const togglePreview = () => {
     setPending(!preview)
@@ -453,7 +638,7 @@ function LessonRow({ lecture: l, number, first, last, editable, courseId, select
       {renaming !== null ? (
         <div className="flex min-w-0 flex-1 items-center gap-1 py-1">
           <Input
-            aria-label="Lesson title"
+            aria-label={`${noun} title`}
             value={renaming}
             maxLength={200}
             autoFocus
@@ -464,7 +649,7 @@ function LessonRow({ lecture: l, number, first, last, editable, courseId, select
               if (e.key === 'Escape') setRenaming(null)
             }}
           />
-          <Button type="button" size="icon-sm" variant="soft" aria-label="Save lesson title" loading={c.updateLecture.isPending} onClick={rename}><Check /></Button>
+          <Button type="button" size="icon-sm" variant="soft" aria-label={`Save ${noun.toLowerCase()} title`} loading={c.updateLecture.isPending} onClick={rename}><Check /></Button>
           <Button type="button" size="icon-sm" variant="ghost" aria-label="Cancel" onClick={() => setRenaming(null)}><X /></Button>
         </div>
       ) : (
@@ -503,7 +688,7 @@ function LessonRow({ lecture: l, number, first, last, editable, courseId, select
                   className="text-danger [&_svg]:text-danger"
                   onSelect={() => window.confirm(`Delete "${l.title}"? This cannot be undone.`) && c.deleteLecture.mutate(l.id, { onSuccess: onDeleted, onError })}
                 >
-                  <Trash2 aria-hidden /> Delete lesson
+                  <Trash2 aria-hidden /> Delete {noun.toLowerCase()}
                 </MenuItem>
               </MenuContent>
             </Menu>
@@ -515,7 +700,7 @@ function LessonRow({ lecture: l, number, first, last, editable, courseId, select
 }
 
 /** A short "needs attention" note, matching what the publish checklist will say. */
-function lessonWarning(l: StudioLecture): string | null {
+function lessonWarning(l: StudioLecture, program = false): string | null {
   switch (l.kind) {
     case 'video':
       if (!l.video) return 'No video yet'
@@ -524,7 +709,7 @@ function lessonWarning(l: StudioLecture): string | null {
     case 'article':
       return l.body.trim() ? null : 'Empty'
     case 'live_session':
-      return l.live_starts_at ? null : 'No start time'
+      return l.live_starts_at || program ? null : 'No start time'
     case 'quiz':
       return l.quiz?.questions.length ? null : 'No questions'
     case 'assignment':

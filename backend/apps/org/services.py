@@ -16,7 +16,9 @@ from .models import Invite, JobRole, MemberJobRole, MemberUnit, Organization, Or
 from .signals import notify_structure_changed
 
 
-def create_organization(*, name: str, slug: str, owner, billing_currency: str = "GBP") -> Organization:
+def create_organization(
+    *, name: str, slug: str, owner, billing_currency: str = "GBP", onboarding_state: str = "active"
+) -> Organization:
     """Company + its root unit + the owner's membership, in one transaction.
 
     The id is taken from the database first so the RLS context (app.org_id) can be
@@ -25,7 +27,12 @@ def create_organization(*, name: str, slug: str, owner, billing_currency: str = 
     org_id = new_id()
     with tenant_context(org_id=org_id, user_id=owner.id):
         org = Organization.objects.create(
-            id=org_id, name=name, slug=slug, billing_currency=billing_currency, created_by=owner
+            id=org_id,
+            name=name,
+            slug=slug,
+            billing_currency=billing_currency,
+            created_by=owner,
+            onboarding_state=onboarding_state,
         )
         root_id = new_id()
         root = OrgUnit.objects.create(

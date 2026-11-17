@@ -62,10 +62,27 @@ def create_checkout_session(
     return {"id": session.id, "url": session.url}
 
 
+def expire_checkout_session(session_id: str) -> str:
+    """Close an open Checkout page so it can't be paid (the order behind it changed). Returns
+    "expired", or "paid" when it was paid just before: the caller must then keep that page."""
+    client = _client()
+    try:
+        client.v1.checkout.sessions.expire(session_id)
+    except stripe.InvalidRequestError:
+        s = client.v1.checkout.sessions.retrieve(session_id)
+        return (
+            "paid"
+            if s.payment_status in ("paid", "no_payment_required") or s.status == "complete"
+            else "expired"
+        )
+    return "expired"
+
+
 def retrieve_checkout_session(session_id: str) -> dict:
     s = _client().v1.checkout.sessions.retrieve(session_id)
     return {"id": s.id, "payment_status": s.payment_status, "payment_intent": s.payment_intent or "",
-            "amount_total": s.amount_total, "currency": s.currency or "", "metadata": dict(s.metadata or {})}  # fmt: skip
+            "amount_total": s.amount_total, "currency": s.currency or "", "metadata": dict(s.metadata or {}),
+            "invoice": s.invoice or "", "subscription": s.subscription or "", "customer": s.customer or ""}  # fmt: skip
 
 
 def refund(*, payment_intent: str, amount: int, idempotency_key: str) -> str:
@@ -78,6 +95,17 @@ def refund(*, payment_intent: str, amount: int, idempotency_key: str) -> str:
 
 def cancel_at_period_end(subscription_id: str) -> None:
     _client().v1.subscriptions.update(subscription_id, params={"cancel_at_period_end": True})
+
+
+def cancel_subscription(subscription_id: str) -> None:
+    """Stop a subscription now (a monthly plan that has been paid in full: no more charges).
+    Already cancelled counts as done, so a retried webhook never fails on it."""
+    client = _client()
+    try:
+        client.v1.subscriptions.cancel(subscription_id)
+    except stripe.InvalidRequestError:
+        if client.v1.subscriptions.retrieve(subscription_id).status != "canceled":
+            raise
 
 
 def construct_event(payload: bytes, signature: str) -> dict:

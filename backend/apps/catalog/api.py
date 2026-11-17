@@ -37,8 +37,11 @@ class CourseFilters(Schema):
 
 
 def _public():
-    return Course.objects.filter(status="published", live_version__isnull=False, deleted_at__isnull=True,
-                                 owner_org_id__isnull=True)  # fmt: skip
+    """Published marketplace courses, and programs with an offer on sale (M21 lifts D29 for B2C)."""
+    from apps.commerce.programs import has_offers_q
+
+    return Course.objects.filter(has_offers_q(), status="published", live_version__isnull=False,
+                                 deleted_at__isnull=True, owner_org_id__isnull=True)  # fmt: skip
 
 
 def _instructor_names():
@@ -55,6 +58,12 @@ def _cards(courses: list[Course], currency: dict, quotes: dict | None = None) ->
     Callers that already priced the courses (the cart) pass their quotes in."""
     if quotes is None:
         quotes = pricing.quote([c.id for c in courses], currency["code"]) if courses else {}
+    program_ids = [c.id for c in courses if c.kind == Course.Kind.PROGRAM and c.owner_org_id is None]
+    lowest = {}
+    if program_ids:
+        from apps.commerce.programs import from_prices
+
+        lowest = from_prices(program_ids, currency["code"])
     out = []
     for c in courses:
         q = quotes.get(c.id)
@@ -66,6 +75,10 @@ def _cards(courses: list[Course], currency: dict, quotes: dict | None = None) ->
             "instructors": [i.user.full_name for i in getattr(c, "visible_instructors", [])],
             "price": {"currency": currency["code"], "exponent": currency["exponent"], **q} if q else None,
         })  # fmt: skip
+        if c.id in lowest:
+            out[-1]["price"] = {"currency": currency["code"], "exponent": currency["exponent"], "free": False,
+                                "list_minor": lowest[c.id], "sale_minor": None}  # fmt: skip
+            out[-1]["price_from"] = True
     return out
 
 
@@ -152,7 +165,7 @@ def course_detail(request, slug: str, currency: str | None = None):
     if course.owner_org_id is not None:
         card["price"] = None
     sections = [
-        {"id": s.id, "title": s.title, "lectures": [
+        {"id": s.id, "title": s.title, "module_id": s.module_id, "lectures": [
             {"id": lec.id, "key": lec.lecture_key, "title": lec.title, "kind": lec.kind,
              "duration_sec": lec.duration_sec, "is_preview": lec.is_preview,
              "token_price": lec.token_price, "is_free_preview": lec.is_free_preview,
@@ -195,6 +208,33 @@ def course_detail(request, slug: str, currency: str | None = None):
         "rating_breakdown": breakdown, "sections": sections, "viewer": viewer,
         "full_course_token_price": course.full_course_token_price,
         "token_pricing_mode": course.token_pricing_mode, "in_subscription": course.in_subscription,
+        "kind": course.kind,
+        "modules": selectors.modules(course.live_version_id) if course.kind == Course.Kind.PROGRAM else [],
+        **(_program_sale(course, cur, user) if course.kind == Course.Kind.PROGRAM else {}),
+    }  # fmt: skip
+
+
+def _program_sale(course: Course, cur: dict, user) -> dict:
+    """Offers with prices, intakes with places left, and what the viewer already has (M21)."""
+    if course.owner_org_id is not None:
+        return {}
+    from apps.commerce import programs
+
+    offers = programs.active_offers(course.id)
+    amounts = programs.offer_amounts(offers, cur["code"]) if offers else {}
+    has_live = any(o.mode == "live" for o in offers)
+    e = programs.personal_enrollment(user, course.id) if user.is_authenticated else None
+    return {
+        "offers": [
+            {"id": o.id, "module_key": o.module_key, "mode": o.mode, "token_price": o.token_price,
+             "instalments_max": o.instalments_max,
+             "price": {"currency": cur["code"], "exponent": cur["exponent"], "free": False,
+                       "list_minor": amounts[o.id], "sale_minor": None} if o.id in amounts else None}
+            for o in offers
+        ],
+        "intakes": [{k: i[k] for k in ("id", "name", "start_date", "end_date", "places_left")}
+                    for i in programs.intakes(course)] if has_live else [],
+        "program_access": programs.access_summary(e),
     }  # fmt: skip
 
 

@@ -51,6 +51,27 @@ function usePageTitle() {
   }, [title])
 }
 
+/** Links like /plans#teams or /privacy#cookies: once the page has drawn the target (it may
+ * still be loading), scroll it into view. Gives up quietly after about two seconds. */
+function useHashScroll() {
+  const { pathname, hash } = useLocation()
+  useEffect(() => {
+    const id = decodeURIComponent(hash.slice(1))
+    if (!id) return
+    let frame = 0
+    const started = performance.now()
+    const look = () => {
+      const el = document.getElementById(id)
+      if (el) {
+        const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+      } else if (performance.now() - started < 2000) frame = requestAnimationFrame(look)
+    }
+    frame = requestAnimationFrame(look)
+    return () => cancelAnimationFrame(frame)
+  }, [pathname, hash])
+}
+
 function MaintenancePage({ message, signedIn }: { message: string; signedIn: boolean }) {
   const logout = useLogout()
   return (
@@ -132,6 +153,7 @@ export function SiteRoot() {
   const { data: me, isLoading } = useMe()
   const { pathname, search } = useLocation()
   usePageTitle()
+  useHashScroll()
   useBranding(settings['general.platform_name'], settings['general.favicon_url'])
   // date format, time zone and language for every page (set during render so the first paint uses them)
   setDatePrefs(settings['general.date_format'], settings['general.time_zone'])

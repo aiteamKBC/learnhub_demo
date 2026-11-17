@@ -9,6 +9,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useCategories, useSearchSuggestions } from '@/features/catalog/api'
 import { useCartCount } from '@/features/commerce/api'
 import { useMe } from '@/features/identity/auth'
+import { usePublicSettings } from '@/features/platform/api'
 import { cn } from '@/lib/cn'
 import { useOn } from '@/lib/motion'
 
@@ -58,6 +59,8 @@ function SearchBox({ className, autoFocus }: { className?: string; autoFocus?: b
   }, [q])
   const { data: cats } = useCategories()
   const courses = useSearchSuggestions(debounced)
+  // new results can reorder the list: never keep a highlight that now points at something else
+  useEffect(() => setActive(-1), [debounced, courses.data])
   const term = q.trim()
   const needle = debounced.toLowerCase()
   const options: Suggestion[] =
@@ -143,16 +146,26 @@ function SearchBox({ className, autoFocus }: { className?: string; autoFocus?: b
   )
 }
 
-// Book a demo uses the same sales contact as the plans page (client question 8).
-const FOOTER: { title: string; links: { label: string; to: string }[] }[] = [
-  { title: 'Learn', links: [{ label: 'Browse courses', to: '/courses' }, { label: 'Plans', to: '/plans' }, { label: 'Verify a certificate', to: '/verify' }] },
-  { title: 'Business', links: [{ label: 'Team plans', to: '/plans' }, { label: 'Company workspace', to: '/business' }, { label: 'Book a demo', to: 'mailto:business@learnhub.example.com?subject=LearnHub%20demo' }] },
-  { title: 'LearnHub', links: [{ label: 'Teach on LearnHub', to: '/teach' }, { label: 'Help centre', to: '/support' }] },
-]
+type FooterLink = { label: string; to: string }
+
+/** Footer columns. Mail links use the contact email from console > Settings and are left
+ * out while it is empty, so no link ever points at an address nobody reads. */
+function footerColumns(contact: string): { title: string; links: FooterLink[] }[] {
+  const mail = (subject: string) => (contact ? `mailto:${contact}?subject=${encodeURIComponent(subject)}` : '')
+  const keep = (links: FooterLink[]) => links.filter((l) => l.to)
+  return [
+    { title: 'Learn', links: [{ label: 'Browse courses', to: '/courses' }, { label: 'Plans and pricing', to: '/plans' }, { label: 'Verify a certificate', to: '/verify' }] },
+    { title: 'Business', links: keep([{ label: 'Training for teams', to: '/plans#teams' }, { label: 'Book a demo', to: mail('LearnHub demo') }]) },
+    { title: 'LearnHub', links: keep([{ label: 'Teach on LearnHub', to: '/teach' }, { label: 'Help centre', to: '/support' }, { label: 'Contact us', to: mail('Hello') }]) },
+    { title: 'Legal', links: [{ label: 'Privacy policy', to: '/privacy' }, { label: 'Terms of use', to: '/terms' }, { label: 'Cookies', to: '/privacy#cookies' }] },
+  ]
+}
 
 /** Marketplace pages: top navigation, footer; phones get the learner bottom bar. */
 export function PublicLayout() {
   const { data: me, isLoading } = useMe()
+  const { settings } = usePublicSettings()
+  const footer = footerColumns(settings['general.contact_email'])
   const [searchOpen, setSearchOpen] = useState(false)
   const link = ({ isActive }: { isActive: boolean }) => cn('rounded-md px-3 py-2 text-sm font-medium transition-colors', isActive ? 'text-primary' : 'text-muted hover:text-text')
 
@@ -204,21 +217,21 @@ export function PublicLayout() {
       </main>
 
       <footer className={cn('border-t border-border bg-surface', me && 'pb-16 md:pb-0')}>
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:grid-cols-2 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
           <div>
             <Logo />
             <p className="mt-3 max-w-xs text-sm text-muted">Courses from expert instructors, and compliance training your whole team can keep up with.</p>
           </div>
-          {FOOTER.map(({ title, links }) => (
+          {footer.map(({ title, links }) => (
             <div key={title}>
               <p className="text-sm font-semibold">{title}</p>
               <ul className="mt-3 grid gap-2 text-sm text-muted">
                 {links.map(({ label, to }) => (
                   <li key={label}>
                     {to.startsWith('mailto:') ? (
-                      <a href={to} className="transition-colors hover:text-text">{label}</a>
+                      <a href={to} className="rounded-sm transition-colors hover:text-text">{label}</a>
                     ) : (
-                      <Link to={to} className="transition-colors hover:text-text">{label}</Link>
+                      <Link to={to} className="rounded-sm transition-colors hover:text-text">{label}</Link>
                     )}
                   </li>
                 ))}
@@ -226,7 +239,7 @@ export function PublicLayout() {
             </div>
           ))}
         </div>
-        <p className="border-t border-border py-4 text-center text-xs text-subtle">© {YEAR} LearnHub. Demo build.</p>
+        <p className="border-t border-border py-4 text-center text-xs text-subtle">© {YEAR} {settings['general.platform_name']}. All rights reserved.</p>
       </footer>
       {me ? <BottomNav /> : null}
     </div>

@@ -6,6 +6,7 @@ python-dotenv==1.2.4
 django-cors-headers==4.9.0
 django-redis==7.0.0
 httpx==0.28.1
+cryptography==50.0.2  # M17: HR API keys encrypted at rest (Fernet)
 email-validator==2.3.0
 argon2-cffi==25.1.0
 orjson==3.13.0

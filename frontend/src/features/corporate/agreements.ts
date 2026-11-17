@@ -16,7 +16,7 @@ export type CnInstalment = S['ConsoleInstalmentOut']
 export type CnPlanIn = S['ConsoleInstalmentPlanIn']
 export type FileRow = S['ConsoleAttachmentOut'] | S['CorporateAttachmentOut']
 export type MyProgramme = S['MyProgrammeOut']
-type UploadTicket = { attachment_id: string; upload_url: string; method: string; headers: Record<string, string> }
+type UploadTicket = S['CorporateUploadOut'] | S['ConsoleAttachmentUploadOut']
 
 const cn = (...p: unknown[]) => ['console', 'corporate', ...p]
 const co = (...p: unknown[]) => ['corporate', currentOrgId(), ...p]

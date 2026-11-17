@@ -18,7 +18,7 @@ from django.utils import timezone
 from apps.platform import services as platform
 from core.tenancy import tenant_context
 
-from . import gateway, services
+from . import gateway, programs, services
 from .models import (
     AddonSubscription,
     Invoice,
@@ -67,6 +67,14 @@ def dispatch(event: dict) -> None:
         _session_completed(obj, meta)
     elif kind == "checkout.session.expired" and meta.get("kind") == "order":
         services.expire_order(order_id=meta["id"])
+    elif kind == "checkout.session.expired" and meta.get("kind") == programs.INSTALMENTS_KIND:
+        programs.expire_checkout(meta)
+    elif kind in ("checkout.session.expired", "checkout.session.async_payment_failed") and (
+        meta.get("kind") == "program_seats"
+    ):
+        from apps.corporate import program_seats
+
+        program_seats.expired(meta, obj.get("id") or "")  # the order can be changed and paid again
     elif kind == "checkout.session.expired" and meta.get("kind") in ("corporate_recorded", "corporate_live"):
         from apps.corporate.fulfillment import expire_purchase
 
@@ -80,6 +88,8 @@ def dispatch(event: dict) -> None:
         from apps.corporate.fulfillment import fail_purchase
 
         fail_purchase(obj, meta)
+    elif kind.startswith("customer.subscription.") and meta.get("kind") == programs.INSTALMENTS_KIND:
+        programs.instalment_subscription_changed(obj)  # a program's monthly plan, not a plan subscription
     elif kind.startswith("customer.subscription."):
         # created / updated / deleted / paused / resumed / pending_update_* / trial_will_end:
         # each carries the whole subscription, so access always follows its status
@@ -107,6 +117,14 @@ def _session_completed(session: dict, meta: dict) -> None:
             amount_minor=session.get("amount_total"),
             currency=session.get("currency") or "",
         )
+    elif meta.get("kind") == programs.INSTALMENTS_KIND:
+        programs.session_completed(session, meta)
+    elif meta.get("kind") == "program_seats":
+        if session.get("payment_status") != "paid":
+            return
+        from apps.corporate import program_seats
+
+        program_seats.paid(session, meta)
     elif meta.get("kind") == "cash_package":
         _fulfil_cash_package(session, meta)
     elif meta.get("kind") == "token_pack":
@@ -291,6 +309,10 @@ def _invoice_failed(inv: dict) -> None:
 
         instalment_failed(inv)
         return
+    plan = programs.plan_for_invoice(inv)
+    if plan is not None:
+        programs.instalment_failed(plan)
+        return
     sub = _subscription_of(inv)
     if sub is None:
         return
@@ -311,6 +333,11 @@ def _invoice_paid(inv: dict) -> None:
         from apps.corporate.instalments import instalment_paid
 
         instalment_paid(inv)
+        return
+    plan = programs.plan_for_invoice(inv)
+    if plan is not None:
+        programs.instalment_paid(plan.id, invoice_id=inv.get("id") or "", amount=inv.get("amount_paid"),
+                                 currency=inv.get("currency") or "", payment_intent=inv.get("payment_intent") or "")  # fmt: skip
         return
     sub = _subscription_of(inv)
     if sub is None:

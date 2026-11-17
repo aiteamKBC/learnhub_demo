@@ -9,7 +9,7 @@ const [OUT = '../../shots/phone', ...extra] = process.argv.slice(2)
 const org = JSON.parse(lastLine(py('e2e_org.py', NEW_USER_PASSWORD)))
 const routes = [
   '/business', '/business/matrix', '/business/requirements', '/business/reports', '/business/people',
-  `/business/people/${org.people.sara.member_id}`, '/business/units', '/business/invites', '/business/library',
+  `/business/people/${org.people.sara.member_id}`, '/business/units', '/business/hr-system', '/business/invites', '/business/library',
   '/business/assign', '/business/billing', '/business/settings', '/invite/not-a-real-token', ...extra,
 ]
 const r = spawnSync(process.execPath, [path.join(__dirname, 'phone_check.js'), OUT, ...routes], {

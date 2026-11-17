@@ -60,6 +60,17 @@ class OrderItemOut(Schema):
     gross_minor: int
     refunded_at: datetime | None
     refundable: bool
+    offer_label: str | None = None  # programs (M21): "Whole program, live" / "Module 2, recorded"
+
+
+class InstalmentsOut(Schema):
+    """A program paid monthly (M21)."""
+
+    count: int
+    paid_count: int
+    amount_minor: int  # each payment
+    status: str  # pending | active | past_due | completed | cancelled
+    grace_until: datetime | None  # past_due: access pauses then unless paid
 
 
 class OrderOut(Schema):
@@ -73,6 +84,22 @@ class OrderOut(Schema):
     created_at: datetime
     paid_at: datetime | None
     items: list[OrderItemOut]
+    instalments: InstalmentsOut | None = None
+
+
+class ProgramCheckoutIn(Schema):
+    offer_id: UUID
+    currency: str = Field(..., min_length=3, max_length=3)
+    cohort_id: UUID | None = None  # the intake, for a live place
+    instalments: int = Field(1, ge=1, le=24)
+
+
+class ProgramUnlockIn(Schema):
+    offer_id: UUID
+
+
+class ProgramUnlockOut(Schema):
+    enrollment_id: UUID
 
 
 class OrderPage(Schema):

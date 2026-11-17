@@ -54,7 +54,7 @@ PAID_ACCESS = (Enrollment.Status.ACTIVE, Enrollment.Status.COMPLETED)
 # ---------------------------------------------------------------- cart & wishlist
 def _sellable(course_id) -> Course:
     course = Course.objects.filter(
-        pk=course_id, live_version__isnull=False, owner_org_id__isnull=True
+        pk=course_id, live_version__isnull=False, owner_org_id__isnull=True, kind__in=Course.SELLABLE_KINDS
     ).first()
     if course is None:
         raise ServiceError("not_for_sale", "This course is not available.")
@@ -127,7 +127,9 @@ def price_cart(*, user, course_ids: list, currency: str, coupon_code: str | None
         raise ServiceError("bad_currency", f"Payments in {currency} are not available.")
     courses = {
         c.id: c
-        for c in Course.objects.filter(pk__in=ids, live_version__isnull=False, owner_org_id__isnull=True)
+        for c in Course.objects.filter(
+            pk__in=ids, live_version__isnull=False, owner_org_id__isnull=True, kind__in=Course.SELLABLE_KINDS
+        )
     }
     if len(courses) != len(ids):
         raise ServiceError("not_for_sale", "One of these courses is not available.")
@@ -264,6 +266,15 @@ def fulfil_order(
             currency=cur, status="succeeded", payment_method_type=order.payment_method_type,
             card_brand=order.card_brand, card_last4=order.card_last4,
         )  # fmt: skip
+    return complete_paid_order(order, payment_intent=payment_intent)
+
+
+def complete_paid_order(order: Order, *, payment_intent: str = "") -> Order:
+    """The money is in (checked by the caller, under the order's row lock): mark paid, count
+    the coupon or promotion, enrol, clear the cart, send the receipt. A program line
+    (M21) enrols through apps.commerce.programs (scope, live seat)."""
+    from . import programs
+
     now = timezone.now()
     order.status, order.paid_at, order.stripe_payment_intent_id = Order.Status.PAID, now, payment_intent
     order.save(update_fields=["status", "paid_at", "stripe_payment_intent_id", "updated_at"])
@@ -282,7 +293,11 @@ def fulfil_order(
         )  # fmt: skip
         Promotion.objects.filter(pk=order.promotion_id).update(redeemed_count=F("redeemed_count") + 1)
     user = order.user
-    for item in order.items.select_related("course"):
+    for item in order.items.select_related("course", "offer", "cohort"):
+        if item.offer_id:
+            e = programs.fulfil_item(item, user)
+            OrderItem.objects.filter(pk=item.pk).update(enrollment=e)
+            continue
         source = (
             Enrollment.Source.FREE
             if item.gross_minor == 0 and item.list_minor == 0
@@ -296,6 +311,12 @@ def fulfil_order(
     notify_order_paid(order.id)
     _receipt(order)
     return order
+
+
+def is_instalment_order(order_id) -> bool:
+    from .models import InstalmentPlan
+
+    return InstalmentPlan.objects.filter(order_id=order_id).exists()
 
 
 def _promotion_discount(order: Order) -> int:
@@ -336,9 +357,24 @@ def sync_order_from_stripe(order: Order) -> bool:
         log.warning("order %s: could not check its Checkout Session", order.id, exc_info=True)
         return False
     meta = s.get("metadata") or {}
+    from core.tenancy import tenant_context
+
+    if (
+        s.get("payment_status") == "paid"
+        and meta.get("kind") == "program_instalments"
+        and meta.get("order") == str(order.id)
+    ):
+        from . import programs
+
+        try:
+            with tenant_context(staff=True):
+                programs.session_completed(s, meta)
+        except ServiceError:
+            log.warning("order %s: paid instalment session refused", order.id, exc_info=True)
+            return False
+        return True
     if s.get("payment_status") != "paid" or meta.get("kind") != "order" or meta.get("id") != str(order.id):
         return False
-    from core.tenancy import tenant_context
 
     try:
         with tenant_context(staff=True):  # the same platform context the webhook uses
@@ -404,6 +440,14 @@ def request_refund(*, item: OrderItem, by, reason: str = "") -> Refund:
     item = OrderItem.objects.get(pk=item.pk)  # re-read under the order lock: no double refunds
     if order.status not in (Order.Status.PAID, Order.Status.PARTIALLY_REFUNDED) or item.refunded_at:
         raise ServiceError("not_refundable", "This purchase cannot be refunded.")
+    if is_instalment_order(order.id):
+        raise ServiceError(
+            "not_refundable", "Monthly payment plans are refunded by the provider. Please contact us."
+        )
+    if item.offer_id:
+        from . import programs
+
+        programs.check_refund(item)
     days = refund_window_days()
     if not by.is_staff and order.paid_at < timezone.now() - timedelta(days=days):
         raise ServiceError("refund_window", f"Refunds are available for {days} days.")
@@ -425,6 +469,10 @@ def request_refund(*, item: OrderItem, by, reason: str = "") -> Refund:
         Enrollment.objects.filter(pk=item.enrollment_id).update(
             status=Enrollment.Status.REVOKED, updated_at=now
         )
+    if item.offer_id:
+        from . import programs
+
+        programs.refunded(item)
     remaining = order.items.filter(refunded_at__isnull=True).exists()
     order.status = Order.Status.PARTIALLY_REFUNDED if remaining else Order.Status.REFUNDED
     order.save(update_fields=["status", "updated_at"])
@@ -608,6 +656,8 @@ def plan_covers(plan: Plan, course: Course) -> bool:
 
 def enrol_with_plan(*, user, course: Course) -> Enrollment:
     """Personal-plan learners enrol without buying; access ends with the subscription."""
+    if course.kind not in Course.SELLABLE_KINDS:
+        raise ServiceError("not_for_sale", "This course is not available.")
     sub = (
         Subscription.objects.filter(
             user=user,

@@ -33,6 +33,11 @@ class Organization(BaseModel):
         SUSPENDED = "suspended", "Suspended"
         CANCELLED = "cancelled", "Cancelled"
 
+    class Onboarding(models.TextChoices):
+        ORDERING = "ordering", "Building the first order"
+        AWAITING_PAYMENT = "awaiting_payment", "Waiting for payment"
+        ACTIVE = "active", "Workspace open"
+
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=80, unique=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.TRIAL)
@@ -41,6 +46,11 @@ class Organization(BaseModel):
     # How long training records are kept after someone leaves, then anonymised (decision 8)
     retention_months = models.PositiveSmallIntegerField(default=72)
     seat_limit = models.PositiveIntegerField(null=True, blank=True)
+    # M22 (D8): a company that signs itself up builds and pays its first order before the
+    # workspace opens. Companies made any other way are active straight away.
+    onboarding_state = models.CharField(
+        max_length=16, choices=Onboarding.choices, default=Onboarding.ACTIVE, db_default=Onboarding.ACTIVE
+    )
     stripe_customer_id = models.CharField(max_length=64, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"

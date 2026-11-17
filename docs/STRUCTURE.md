@@ -4,19 +4,21 @@
 
 | App / schema | Owns |
 |---|---|
-| `identity` | users, instructor profiles; django-allauth (emails, Google/Microsoft accounts, 2FA) and Django's own tables (sessions, permissions, migrations) |
+| `identity` | users, instructor profiles, staff roles (M18: `StaffRole`, `StaffRoleAssignment`); django-allauth (emails, Google/Microsoft accounts, 2FA) and Django's own tables (sessions, permissions, migrations) |
 | `org` | organizations, sites/departments, members, job roles, invites, branding, credits |
-| `catalog` | categories, courses, sections, lectures, video libraries, media assets, quizzes |
+| `catalog` | categories, courses (`kind` short or program), program modules, sections (= program weeks), lectures (= components), video libraries, media assets, quizzes |
+| `delivery` (M18) | cohorts, cohort module start dates, groups (tutor + timetable), bank holidays, closures, live sessions and workshops (M20, `sessions.py`; Teams via `apps/catalog/teams.py`). Reference tables: everyone reads, staff writes. Dates come from the pure calendar in `apps/delivery/calendar.py` |
 | `learning` | enrollments, lecture progress, progress events, quiz attempts, certificates |
 | `compliance` | requirements, assignments, reminders, member requirement status |
-| `commerce` | carts, coupons, orders, payments, refunds, plans, subscriptions, add-ons |
+| `commerce` | carts, coupons, orders, payments, refunds, plans, subscriptions, add-ons; selling programs (M21, `programs.py`: offers, intakes, live seats, module tokens, monthly plans) |
+| `corporate` | company course seats, live training, quotes, cancellations; program seats (M22, `program_seats.py`: company signup and the workspace gate, seat orders paid by card, allocation, swap requests, the line manager view) |
 | `payouts` | instructor payout accounts, earnings ledger, consumption, payouts |
 | `engagement` | reviews, Q&A, votes, announcements, notifications |
 | `analytics` | rollups for dashboards (rebuildable, referenced by nothing) |
 | `platform` | settings, entitlements, webhook inbox, audit log, outbox, feature flags |
-| `integrations` (planned, M17) | HR system connections (Breathe HR), imported people, departments, training records, leave, sync runs |
+| `integrations` (M17) | HR system connections (Breathe HR), imported people, departments, training records, leave, sync runs |
 
-Dependencies only point upward: identity <- org <- catalog <- learning <- compliance <- integrations;
+Dependencies only point upward: identity <- org <- catalog <- delivery <- learning <- compliance <- integrations;
 commerce, payouts and engagement may reference any of those; nothing references analytics.
 
 ## Inside each app
@@ -44,6 +46,7 @@ apps/<domain>/
 | `core/api.py` | NinjaAPI root; mounts every app router at `/api/v1/<domain>/` |
 | `core/crud.py` | Generic CRUD router for plain lookup tables only |
 | `core/pagination.py` | Keyset pagination (no OFFSET) |
+| `core/staff_perms.py` | Staff permission codes, default roles, `has_perm` / `require_perm` (M18). Provider staff powers come from roles, not hard-coded names |
 | `core/errors.py` | One error shape: `{"error": {"code", "message", "details"}}` |
 | `core/tests/test_rls.py` | Fails if any `org_id` table lacks FORCE RLS, or anything lands in `public` |
 

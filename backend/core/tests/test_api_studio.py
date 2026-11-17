@@ -168,7 +168,10 @@ class StudioApiTest(SchemaTransactionTestCase):
         self.assertTrue(
             lectures[0]["quiz"]["questions"][0]["options"][0]["is_correct"]
         )  # editors see answers
-        self.assertEqual(tree["working_version"]["checklist"], [])
+        # content is complete; selling needs a price first (B2C v2 publish rule)
+        self.assertEqual(
+            tree["working_version"]["checklist"], ["Set a course price, or make the course free."]
+        )
 
         # another instructor cannot see or touch it
         other = User.objects.create_user("ana@learnhub.example.com", "x")
@@ -181,6 +184,9 @@ class StudioApiTest(SchemaTransactionTestCase):
         self.as_(self.teacher)
         tier = self.call("get", "/price-tiers").json()[4]["id"]
         self.call("put", f"/courses/{c['id']}/price", {"tier_id": tier})
+        for lec in lectures:  # a paid course needs a token price on every non-preview lesson
+            self.call("patch", f"/lectures/{lec['id']}", {"token_price": 10})
+        self.assertEqual(self.call("get", f"/courses/{c['id']}").json()["working_version"]["checklist"], [])
         self.assertEqual(
             self.call("post", f"/versions/{v}/submit", {"change_summary": "v1"}).json()["status"], "in_review"
         )
@@ -411,7 +417,6 @@ class PrerequisiteTest(SchemaTransactionTestCase):
     learner lock (every lesson endpoint refuses until the earlier one is complete)."""
 
     def test_prerequisite_lesson_rules_and_learner_lock(self):
-        from apps.commerce.models import CoursePrice
         from apps.learning import services as learning
 
         staff, teacher, sara, _ = f.users()
@@ -444,6 +449,7 @@ class PrerequisiteTest(SchemaTransactionTestCase):
         tree = call("get", f"/courses/{c['id']}").json()["working_version"]
         self.assertEqual(tree["sections"][0]["lectures"][1]["prerequisite_key"], first["key"])
 
+        call("put", f"/courses/{c['id']}/price", {"free": True})  # the checklist needs a price
         # moving the lesson above its prerequisite blocks publishing until fixed
         call("put", f"/sections/{sec}/lectures/order", {"ids": [second["id"], first["id"]]})
         problems = call("get", f"/courses/{c['id']}").json()["working_version"]["checklist"]
@@ -453,7 +459,6 @@ class PrerequisiteTest(SchemaTransactionTestCase):
         with tenant_context(user_id=staff.id, staff=True):
             cat.approve(version=CourseVersion.objects.get(pk=v), reviewer=staff)
             course = Course.objects.get(pk=c["id"])
-            CoursePrice.objects.create(course=course, is_free=True)
             enrol = learning.enrol(user=sara, course=course, source="free").id
 
         self.client.force_login(sara)

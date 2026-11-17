@@ -5,13 +5,22 @@ from decimal import Decimal
 from django.utils import timezone
 
 from apps.catalog import services as cat
-from apps.catalog.models import Category, Course, VideoLibrary
+from apps.catalog.models import Category, Course, Lecture, VideoLibrary
 from apps.commerce import pricing
 from apps.commerce.models import CoursePrice, Currency, PriceTier
 from apps.identity.models import User
 from core.tenancy import tenant_context
 
 ECB = {"USD": Decimal("1.16"), "GBP": Decimal("0.87"), "JPY": Decimal("175")}
+
+
+def priced_for_publish(course, *, tier=None):
+    """The publish checklist needs a price (or "free") before submission, and a paid course
+    also needs a token price on every non-preview lesson. Call it just before `submit`."""
+    with tenant_context(staff=True):
+        CoursePrice.objects.create(course=course, is_free=tier is None, tier=tier)
+        if tier is not None:
+            Lecture.objects.filter(version__course=course, is_preview=False).update(token_price=10)
 
 
 def users():
@@ -55,14 +64,16 @@ def course(*, staff, owner, slug, title, category=None, tier="Tier 5", ownership
                          options=[{"body": "True"}, {"body": "False", "is_correct": True}])  # fmt: skip
         a = cat.add_lecture(section=s1, kind="assignment", title="Do it").assignment
         cat.update_assignment(assignment=a, instructions="<p>Write something</p>")
+        if org_id is None:  # the publish checklist needs the price first (and token prices if paid)
+            with tenant_context(user_id=staff.id, staff=True):
+                CoursePrice.objects.create(
+                    course=c, is_free=free, tier=None if free else PriceTier.objects.get(name=tier)
+                )
+                if not free:
+                    Lecture.objects.filter(version=v, is_preview=False).update(token_price=10)
         cat.submit(version=v, by=owner)
     if ownership == "instructor":
         with tenant_context(user_id=staff.id, staff=True):
             cat.approve(version=v, reviewer=staff)
-    if org_id is None:
-        with tenant_context(user_id=staff.id, staff=True):
-            CoursePrice.objects.create(
-                course=c, is_free=free, tier=None if free else PriceTier.objects.get(name=tier)
-            )
     with tenant_context(**ctx):
         return Course.objects.get(pk=c.pk)

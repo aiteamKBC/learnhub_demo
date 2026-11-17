@@ -75,6 +75,7 @@ def _validate_courses(course_ids: list) -> tuple[set, dict]:
             deleted_at__isnull=True,
             status="published",
             live_version__isnull=False,
+            kind__in=Course.SELLABLE_KINDS,
         ).values_list("id", flat=True)
     )
     if course_ids and not ids:

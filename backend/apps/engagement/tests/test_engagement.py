@@ -23,6 +23,7 @@ from apps.org.models import OrgMember
 from core.errors import ServiceError
 from core.tenancy import tenant_context
 from core.tests.base import SchemaTransactionTestCase
+from core.tests.factories import priced_for_publish
 
 
 class EngagementBase(SchemaTransactionTestCase):
@@ -49,6 +50,8 @@ class EngagementBase(SchemaTransactionTestCase):
             )
             sec = cat.add_section(version=c.versions.get(), title="s")
             cat.add_lecture(section=sec, kind="article", title="r", body="<p>x</p>")
+            if org is None:
+                priced_for_publish(c)
             cat.submit(version=c.versions.get(), by=owner)
         if ownership == "instructor":
             with tenant_context(**self.STAFF):

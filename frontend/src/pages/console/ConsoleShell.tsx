@@ -4,6 +4,7 @@ import { ApiError } from '@/api/client'
 import { Backdrop } from '@/components/art/backdrops'
 import { type NavSection, WorkspaceLayout } from '@/components/layout/WorkspaceLayout'
 import { corporateConsoleNav } from '@/features/corporate/routes'
+import { programsConsoleNav } from '@/features/programs/routes'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Link } from '@/lib/router'
@@ -35,6 +36,7 @@ const consoleNav: NavSection[] = [
       { to: '/console/students', label: 'Students', Icon: Users },
     ],
   },
+  ...programsConsoleNav,
   {
     title: 'Money',
     items: [

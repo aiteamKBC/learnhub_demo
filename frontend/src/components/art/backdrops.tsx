@@ -30,12 +30,15 @@
  *   stamp          console approvals: an approval seal over a stack of reviewed pages
  *   seats          corporate packages: a classroom plan, some seats taken, some free
  *   timetable      live training: a week grid with sessions joined along a timeline
+ *   folio          privacy and terms: a numbered policy document under a padlock seal
+ *   handover       HR system: two stacks of people records passing cards along dashed arrows
+ *   curriculum     programs and cohorts: module bands split into weeks, the current week lit
  */
 import { memo, useId, type ReactNode } from 'react'
 
 import { cn } from '@/lib/cn'
 
-export type BackdropVariant = 'constellation' | 'mosaic' | 'waves' | 'path' | 'contours' | 'blueprint' | 'circuit' | 'aurora' | 'orbit' | 'ribbons' | 'confetti' | 'notebook' | 'guilloche' | 'honeycomb' | 'checklist' | 'signal' | 'dials' | 'bubbles' | 'chartgrid' | 'orgchart' | 'floorplan' | 'storyboard' | 'coins' | 'stamp' | 'seats' | 'timetable'
+export type BackdropVariant = 'constellation' | 'mosaic' | 'waves' | 'path' | 'contours' | 'blueprint' | 'circuit' | 'aurora' | 'orbit' | 'ribbons' | 'confetti' | 'notebook' | 'guilloche' | 'honeycomb' | 'checklist' | 'signal' | 'dials' | 'bubbles' | 'chartgrid' | 'orgchart' | 'floorplan' | 'storyboard' | 'coins' | 'stamp' | 'seats' | 'timetable' | 'folio' | 'handover' | 'curriculum'
 
 // small seeded PRNG (mulberry32): same seed, same art
 function rng(seed: number) {
@@ -905,6 +908,92 @@ const Stamp = memo(function Stamp() {
   )
 })
 
+/** folio (privacy and terms): a policy page with numbered clauses, a padlock seal, dotted guides. */
+const Folio = memo(function Folio() {
+  const id = useId()
+  const r = rng(57)
+  const px = 1010
+  const py = 70
+  return (
+    <Svg>
+      <Glow id={`${id}g`} cx={1230} cy={180} r={460} color="var(--primary)" opacity={0.13} />
+      <Glow id={`${id}g2`} cx={860} cy={60} r={320} color="var(--chart-5)" opacity={0.1} />
+      {/* a second sheet behind, slightly turned */}
+      <rect x={px + 30} y={py + 18} width="330" height="440" rx="14" fill="var(--surface)" fillOpacity="0.35" stroke="var(--primary)" strokeOpacity="0.1" transform={`rotate(5 ${px + 195} ${py + 238})`} />
+      <rect x={px} y={py} width="330" height="440" rx="14" fill="var(--surface)" fillOpacity="0.55" stroke="var(--primary)" strokeOpacity="0.2" />
+      {/* numbered clauses: a number dot, then lines of text */}
+      {[0, 1, 2, 3].map((k) => {
+        const y = py + 56 + k * 96
+        return (
+          <g key={k}>
+            <circle cx={px + 40} cy={y} r="11" fill="var(--primary)" fillOpacity="0.18" />
+            {Array.from({ length: 3 }, (_, j) => (
+              <line key={j} x1={px + 66} x2={px + 66 + (j === 2 ? 110 + r() * 60 : 200 + r() * 40)} y1={y - 4 + j * 22} y2={y - 4 + j * 22} stroke="var(--text-subtle)" strokeOpacity={0.14 + r() * 0.06} strokeWidth="6" strokeLinecap="round" />
+            ))}
+          </g>
+        )
+      })}
+      {/* the padlock seal over the corner */}
+      <g transform={`translate(${px + 300} ${py + 380})`}>
+        <circle r="74" fill="var(--chart-2)" fillOpacity="0.1" stroke="var(--chart-2)" strokeOpacity="0.4" strokeWidth="2.5" />
+        <circle r="58" fill="none" stroke="var(--chart-2)" strokeOpacity="0.3" strokeWidth="1.5" strokeDasharray="3 6" />
+        <path d="M -18 -6 v -14 a 18 18 0 0 1 36 0 v 14" fill="none" stroke="var(--chart-2)" strokeOpacity="0.55" strokeWidth="7" strokeLinecap="round" />
+        <rect x="-28" y="-8" width="56" height="42" rx="8" fill="var(--chart-2)" fillOpacity="0.35" />
+        <circle cy="10" r="6" fill="var(--surface)" fillOpacity="0.7" />
+      </g>
+      {/* dotted guides running off the page */}
+      <g fill="none" stroke="var(--primary)" strokeOpacity="0.14" strokeDasharray="2 10" strokeLinecap="round" strokeWidth="3">
+        <path d={`M 640 ${py + 120} C 760 ${py + 90}, 880 ${py + 150}, ${px - 14} ${py + 120}`} />
+        <path d={`M 700 ${py + 330} C 820 ${py + 300}, 900 ${py + 360}, ${px - 14} ${py + 330}`} />
+      </g>
+    </Svg>
+  )
+})
+
+/** handover (HR system): two stacks of people cards, records travelling between them. */
+const Handover = memo(function Handover() {
+  const id = useId()
+  // a person card: avatar dot, a name bar and two detail lines
+  const card = (x: number, y: number, o: number, key: string, accent = 'var(--primary)') => (
+    <g key={key}>
+      <rect x={x} y={y} width="200" height="104" rx="12" fill="var(--surface)" fillOpacity={0.45 + o} stroke={accent} strokeOpacity={0.14 + o} />
+      <circle cx={x + 34} cy={y + 34} r="15" fill={accent} fillOpacity={0.16 + o} />
+      <line x1={x + 60} x2={x + 168} y1={y + 30} y2={y + 30} stroke="var(--text-subtle)" strokeOpacity={0.22 + o} strokeWidth="7" strokeLinecap="round" />
+      <line x1={x + 60} x2={x + 132} y1={y + 46} y2={y + 46} stroke="var(--text-subtle)" strokeOpacity={0.12 + o} strokeWidth="5" strokeLinecap="round" />
+      <line x1={x + 22} x2={x + 176} y1={y + 76} y2={y + 76} stroke="var(--text-subtle)" strokeOpacity={0.1 + o} strokeWidth="5" strokeLinecap="round" />
+    </g>
+  )
+  const left = [0, 1, 2].map((i) => card(820 + i * 14, 210 - i * 22, i * 0.06, `l${i}`, 'var(--chart-5)'))
+  const right = [0, 1, 2].map((i) => card(1300 - i * 14, 120 + i * 22, i * 0.06, `r${i}`))
+  return (
+    <Svg>
+      <Glow id={`${id}g`} cx={1180} cy={180} r={480} color="var(--primary)" opacity={0.13} />
+      <Glow id={`${id}g2`} cx={900} cy={320} r={320} color="var(--chart-5)" opacity={0.1} />
+      {left}
+      {right}
+      {/* records passing across: dashed arcs with arrow heads, a small card in flight */}
+      <g fill="none" strokeLinecap="round" strokeWidth="3">
+        <path d="M 1058 170 C 1130 70, 1210 70, 1270 130" stroke="var(--primary)" strokeOpacity="0.35" strokeDasharray="4 10" />
+        <path d="M 1270 300 C 1200 380, 1120 380, 1060 300" stroke="var(--chart-5)" strokeOpacity="0.35" strokeDasharray="4 10" />
+        <path d="M 1256 118 l 16 12 l -18 6" stroke="var(--primary)" strokeOpacity="0.45" />
+        <path d="M 1074 312 l -16 -12 l 18 -6" stroke="var(--chart-5)" strokeOpacity="0.45" />
+      </g>
+      <g transform="rotate(-8 1164 92)">
+        <rect x="1136" y="76" width="56" height="34" rx="6" fill="var(--primary)" fillOpacity="0.2" stroke="var(--primary)" strokeOpacity="0.35" />
+        <line x1="1146" x2="1180" y1="93" y2="93" stroke="var(--primary)" strokeOpacity="0.45" strokeWidth="4" strokeLinecap="round" />
+      </g>
+      {/* a sync mark between the stacks */}
+      <g transform="translate(1164 236)" fill="none" stroke="var(--chart-2)" strokeOpacity="0.45" strokeWidth="4" strokeLinecap="round">
+        <circle r="34" fill="var(--chart-2)" fillOpacity="0.08" stroke="var(--chart-2)" strokeOpacity="0.3" strokeWidth="2" />
+        <path d="M -16 -4 a 16 16 0 0 1 28 -8" />
+        <path d="M 16 4 a 16 16 0 0 1 -28 8" />
+        <path d="M 12 -20 l 0 9 l -9 0" />
+        <path d="M -12 20 l 0 -9 l 9 0" />
+      </g>
+    </Svg>
+  )
+})
+
 /** seats (corporate packages): rows of classroom seats, some taken (filled), some free. */
 const Seats = memo(function Seats() {
   const id = useId()
@@ -981,6 +1070,44 @@ const Timetable = memo(function Timetable() {
   )
 })
 
+/** curriculum (programs): module bands split into dated weeks, one week highlighted as "now",
+ * a thread running down through the modules. Kept on the right, clear of titles. */
+const Curriculum = memo(function Curriculum() {
+  const id = useId()
+  const r = rng(97)
+  const x0 = 900
+  const modules = [7, 5, 6, 4].map((weeks, m) => ({ weeks, y: 110 + m * 112, w: 520 - m * 26, tone: m % 2 ? 'var(--chart-2)' : 'var(--primary)' }))
+  const now = { m: 1, w: 2 }
+  return (
+    <Svg>
+      <Glow id={`${id}g`} cx={1240} cy={230} r={560} color="var(--primary)" opacity={0.13} />
+      <Glow id={`${id}g2`} cx={1500} cy={540} r={340} color="var(--chart-2)" opacity={0.1} />
+      <path d={`M${x0 - 34} 96 V${110 + 3 * 112 + 70}`} stroke="var(--primary)" strokeOpacity="0.18" strokeWidth="2" strokeDasharray="3 9" strokeLinecap="round" />
+      {modules.map((m, mi) => {
+        const cw = m.w / m.weeks
+        return (
+          <g key={mi}>
+            <circle cx={x0 - 34} cy={m.y + 26} r={mi === now.m ? 8 : 5} fill={m.tone} fillOpacity={mi === now.m ? 0.6 : 0.3} />
+            <rect x={x0} y={m.y} width={m.w} height="52" rx="12" fill={m.tone} fillOpacity="0.05" stroke={m.tone} strokeOpacity="0.2" />
+            {Array.from({ length: m.weeks }, (_, wi) => {
+              const active = mi === now.m && wi === now.w
+              const done = mi < now.m || (mi === now.m && wi < now.w)
+              return (
+                <rect key={wi} x={x0 + wi * cw + 6} y={m.y + 8} width={cw - 12} height="36" rx="8" fill={active ? 'var(--chart-3)' : m.tone} fillOpacity={active ? 0.3 : done ? 0.16 : 0.05 + r() * 0.03} stroke={active ? 'var(--chart-3)' : 'none'} strokeOpacity="0.55" />
+              )
+            })}
+            <rect x={x0 + 14} y={m.y - 18} width={90 + mi * 14} height="8" rx="4" fill={m.tone} fillOpacity="0.12" />
+          </g>
+        )
+      })}
+      <g fill="none" stroke="var(--chart-3)" strokeOpacity="0.45" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="1456" y="560" width="58" height="48" rx="8" />
+        <path d="M1456 576 h58 M1472 552 v14 M1498 552 v14" />
+      </g>
+    </Svg>
+  )
+})
+
 /**
  * The artwork for one page, placed behind its top area and faded into the page
  * background so content always reads clearly. Purely decorative (aria-hidden).
@@ -1013,6 +1140,9 @@ export function Backdrop({ variant, height = 560, className, from, to, fade = tr
     stamp: <Stamp />,
     seats: <Seats />,
     timetable: <Timetable />,
+    folio: <Folio />,
+    handover: <Handover />,
+    curriculum: <Curriculum />,
   }[variant]
   return (
     <div

@@ -857,6 +857,119 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/learning/enrollments/{enrollment_id}/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Record
+         * @description Off-the-job hours, KSBs, CPD and module certificates for one program enrolment.
+         */
+        get: operations["apps_learning_api_my_record"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/enrollments/{enrollment_id}/otj": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Otj
+         * @description The learner's ledger, newest day first (keyset).
+         */
+        get: operations["apps_learning_api_my_otj"];
+        put?: never;
+        /** Log Otj */
+        post: operations["apps_learning_api_log_otj"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/enrollments/{enrollment_id}/otj/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Withdraw Otj */
+        delete: operations["apps_learning_api_withdraw_otj"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/enrollments/{enrollment_id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Sessions
+         * @description My group's live sessions: the join link only while the window is open.
+         */
+        get: operations["apps_learning_api_my_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/enrollments/{enrollment_id}/workshops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Workshops */
+        get: operations["apps_learning_api_my_workshops"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/enrollments/{enrollment_id}/workshops/{workshop_id}/booking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book Workshop */
+        post: operations["apps_learning_api_book_workshop"];
+        /** Cancel Workshop */
+        delete: operations["apps_learning_api_cancel_workshop"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/compliance/dashboard": {
         parameters: {
             query?: never;
@@ -1242,6 +1355,46 @@ export interface paths {
         put?: never;
         /** Checkout */
         post: operations["apps_commerce_api_checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commerce/programs/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Program Checkout
+         * @description Buy a program or one module, live (with an intake) or recorded, in full or monthly.
+         */
+        post: operations["apps_commerce_api_program_checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commerce/programs/unlock-module": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Program Unlock Module
+         * @description A recorded module paid with tokens (D6).
+         */
+        post: operations["apps_commerce_api_program_unlock_module"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2603,6 +2756,608 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/corporate/program-seats/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signup */
+        post: operations["apps_corporate_program_seats_api_signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Setup */
+        get: operations["apps_corporate_program_seats_api_setup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue */
+        get: operations["apps_corporate_program_seats_api_catalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Draft */
+        put: operations["apps_corporate_program_seats_api_save_draft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/draft/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Checkout */
+        post: operations["apps_corporate_program_seats_api_checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Orders */
+        get: operations["apps_corporate_program_seats_api_orders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/lines/{line_id}/holders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Holders */
+        get: operations["apps_corporate_program_seats_api_holders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/allocate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Allocate */
+        post: operations["apps_corporate_program_seats_api_allocate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/allocations/{allocation_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release */
+        post: operations["apps_corporate_program_seats_api_release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/allocations/{allocation_id}/swap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Swap */
+        post: operations["apps_corporate_program_seats_api_request_swap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/swaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Swaps
+         * @description Swaps touching the caller's area (the seat holder or the new person), newest first.
+         */
+        get: operations["apps_corporate_program_seats_api_swaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/swaps/{swap_id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Company Decide */
+        post: operations["apps_corporate_program_seats_api_company_decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/swaps/{swap_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Swap */
+        post: operations["apps_corporate_program_seats_api_cancel_swap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corporate/program-seats/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Team */
+        get: operations["apps_corporate_program_seats_api_team"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overview */
+        get: operations["apps_integrations_api_overview"];
+        put?: never;
+        post?: never;
+        /** Disconnect */
+        delete: operations["apps_integrations_api_disconnect"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect */
+        post: operations["apps_integrations_api_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate */
+        post: operations["apps_integrations_api_validate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/replace-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace Key */
+        post: operations["apps_integrations_api_replace_key"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set Features */
+        patch: operations["apps_integrations_api_set_features"];
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause */
+        post: operations["apps_integrations_api_pause"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Now */
+        post: operations["apps_integrations_api_sync_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runs */
+        get: operations["apps_integrations_api_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run Detail */
+        get: operations["apps_integrations_api_run_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** People */
+        get: operations["apps_integrations_api_people"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/people/{person_id}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Match */
+        post: operations["apps_integrations_api_match"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/people/{person_id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite */
+        post: operations["apps_integrations_api_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/people/{person_id}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ignore */
+        post: operations["apps_integrations_api_ignore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/people/{person_id}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset */
+        post: operations["apps_integrations_api_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Departments */
+        get: operations["apps_integrations_api_departments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/departments/{dept_id}/unit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Link Department */
+        put: operations["apps_integrations_api_link_department"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/training/titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Training Titles */
+        get: operations["apps_integrations_api_training_titles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/training/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Map Training */
+        put: operations["apps_integrations_api_map_training"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/training/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Training Records */
+        get: operations["apps_integrations_api_training_records"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Leave
+         * @description Current or next approved leave for the people on a page (one call per page).
+         */
+        get: operations["apps_integrations_api_leave"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/hr/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Member Link */
+        get: operations["apps_integrations_api_member_link"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/studio/instructor-profile": {
         parameters: {
             query?: never;
@@ -2635,6 +3390,26 @@ export interface paths {
         put?: never;
         /** Create Course */
         post: operations["apps_catalog_studio_create_course"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Program
+         * @description A provider program (Programs plan D1, D21): provider staff with programs.build only.
+         */
+        post: operations["apps_catalog_studio_create_program"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2738,6 +3513,92 @@ export interface paths {
         put?: never;
         /** Add Section */
         post: operations["apps_catalog_studio_add_section"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/versions/{version_id}/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Module */
+        post: operations["apps_catalog_studio_add_module"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/versions/{version_id}/modules/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Order Modules */
+        put: operations["apps_catalog_studio_order_modules"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/modules/{module_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Module */
+        delete: operations["apps_catalog_studio_delete_module"];
+        options?: never;
+        head?: never;
+        /** Update Module */
+        patch: operations["apps_catalog_studio_update_module"];
+        trace?: never;
+    };
+    "/api/v1/studio/modules/{module_id}/weeks/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Order Weeks */
+        put: operations["apps_catalog_studio_order_weeks"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/sections/{section_id}/module": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Move Week */
+        put: operations["apps_catalog_studio_move_week"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7030,6 +7891,734 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/console/meetings/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Meetings Status */
+        get: operations["apps_platform_console_program_live_meetings_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-groups/{group_id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Group Sessions */
+        get: operations["apps_platform_console_program_live_group_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-groups/{group_id}/sessions/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plan Group Sessions */
+        post: operations["apps_platform_console_program_live_plan_group_sessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Session */
+        patch: operations["apps_platform_console_program_live_update_session"];
+        trace?: never;
+    };
+    "/api/v1/console/program-sessions/{session_id}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Session Teams */
+        post: operations["apps_platform_console_program_live_session_teams"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-sessions/{session_id}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Session Attendance */
+        get: operations["apps_platform_console_program_live_session_attendance"];
+        /** Mark Session */
+        put: operations["apps_platform_console_program_live_mark_session"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-sessions/{session_id}/attendance/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Session */
+        post: operations["apps_platform_console_program_live_sync_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-sessions/{session_id}/recording": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Session Recording */
+        post: operations["apps_platform_console_program_live_session_recording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-workshops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Workshops
+         * @description Newest first (by start).
+         */
+        get: operations["apps_platform_console_program_live_workshops"];
+        put?: never;
+        /** Create Workshop */
+        post: operations["apps_platform_console_program_live_create_workshop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-workshops/{workshop_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Workshop */
+        patch: operations["apps_platform_console_program_live_update_workshop"];
+        trace?: never;
+    };
+    "/api/v1/console/program-workshops/{workshop_id}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Workshop Teams */
+        post: operations["apps_platform_console_program_live_workshop_teams"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-workshops/{workshop_id}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workshop Attendance */
+        get: operations["apps_platform_console_program_live_workshop_attendance"];
+        /** Mark Workshop */
+        put: operations["apps_platform_console_program_live_mark_workshop"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-workshops/{workshop_id}/attendance/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Workshop */
+        post: operations["apps_platform_console_program_live_sync_workshop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-workshops/{workshop_id}/recording": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Workshop Recording */
+        post: operations["apps_platform_console_program_live_workshop_recording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-teaching": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Teaching
+         * @description The active groups the signed-in tutor teaches, with their next session. Two queries.
+         */
+        get: operations["apps_platform_console_program_live_my_teaching"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Programs
+         * @description Keyset by (title, id).
+         */
+        get: operations["apps_platform_console_programs_programs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/programs/{program_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Program */
+        get: operations["apps_platform_console_programs_program"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/programs/{program_id}/cohorts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Cohort */
+        post: operations["apps_platform_console_programs_create_cohort"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-cohorts/{cohort_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cohort */
+        get: operations["apps_platform_console_programs_cohort"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Cohort */
+        patch: operations["apps_platform_console_programs_update_cohort"];
+        trace?: never;
+    };
+    "/api/v1/console/program-cohorts/{cohort_id}/modules/{module_key}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Module Start */
+        put: operations["apps_platform_console_programs_set_module_start"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-cohorts/{cohort_id}/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Group */
+        post: operations["apps_platform_console_programs_create_group"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-groups/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Group */
+        delete: operations["apps_platform_console_programs_delete_group"];
+        options?: never;
+        head?: never;
+        /** Update Group */
+        patch: operations["apps_platform_console_programs_update_group"];
+        trace?: never;
+    };
+    "/api/v1/console/program-groups/{group_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Group Members */
+        get: operations["apps_platform_console_programs_group_members"];
+        put?: never;
+        /** Add Members */
+        post: operations["apps_platform_console_programs_add_members"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-groups/{group_id}/members/{enrollment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Member */
+        delete: operations["apps_platform_console_programs_remove_member"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-tutors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tutors
+         * @description Staff who can be a group's tutor (role holds groups.teach, or superuser).
+         */
+        get: operations["apps_platform_console_programs_tutors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-closures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Closures
+         * @description Provider-wide closures (every cohort).
+         */
+        get: operations["apps_platform_console_programs_closures"];
+        put?: never;
+        /** Add Closure */
+        post: operations["apps_platform_console_programs_add_closure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-closures/{closure_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Closure */
+        delete: operations["apps_platform_console_programs_delete_closure"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-holidays/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Holidays
+         * @description Fetch GOV.UK bank holidays now (also runs monthly).
+         */
+        post: operations["apps_platform_console_programs_sync_holidays"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/programs/{program_id}/offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Offers */
+        get: operations["apps_platform_console_program_offers_offers"];
+        put?: never;
+        /** Create Offer */
+        post: operations["apps_platform_console_program_offers_create_offer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-offers/{offer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Offer */
+        patch: operations["apps_platform_console_program_offers_update_offer"];
+        trace?: never;
+    };
+    "/api/v1/console/programs/{program_id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Program Settings */
+        get: operations["apps_platform_console_program_records_program_settings"];
+        /** Save Program Settings */
+        put: operations["apps_platform_console_program_records_save_program_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/ksb-standards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ksb Standards */
+        get: operations["apps_platform_console_program_records_ksb_standards"];
+        put?: never;
+        /** Create Custom Standard */
+        post: operations["apps_platform_console_program_records_create_custom_standard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/ksb-standards/{standard_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ksb Standard */
+        get: operations["apps_platform_console_program_records_ksb_standard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/ksb-imports/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch Standard */
+        post: operations["apps_platform_console_program_records_fetch_standard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/ksb-imports/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Standard */
+        post: operations["apps_platform_console_program_records_upload_standard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/ksb-standards/{standard_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Custom Item */
+        post: operations["apps_platform_console_program_records_add_custom_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/programs/{program_id}/ksb-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ksb Map */
+        get: operations["apps_platform_console_program_records_ksb_map"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/programs/{program_id}/ksb-map/{lecture_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Ksb Map */
+        put: operations["apps_platform_console_program_records_set_ksb_map"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/otj-pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Otj Pending
+         * @description Learner logs waiting for a decision, oldest first.
+         */
+        get: operations["apps_platform_console_program_records_otj_pending"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/otj/{entry_id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Otj */
+        post: operations["apps_platform_console_program_records_decide_otj"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/program-enrollments/{enrollment_id}/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Learner Record */
+        get: operations["apps_platform_console_program_records_learner_record"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/console/promotions/overview": {
         parameters: {
             query?: never;
@@ -7214,6 +8803,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/console/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Roles */
+        get: operations["apps_platform_console_roles_roles"];
+        put?: never;
+        /** Create Role */
+        post: operations["apps_platform_console_roles_create_role"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/roles/{role_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Role */
+        delete: operations["apps_platform_console_roles_delete_role"];
+        options?: never;
+        head?: never;
+        /** Update Role */
+        patch: operations["apps_platform_console_roles_update_role"];
+        trace?: never;
+    };
+    "/api/v1/console/roles/{role_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Role Members */
+        get: operations["apps_platform_console_roles_role_members"];
+        put?: never;
+        /** Add Role Member */
+        post: operations["apps_platform_console_roles_add_role_member"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/roles/{role_id}/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Role Member */
+        delete: operations["apps_platform_console_roles_remove_role_member"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/console/search": {
         parameters: {
             query?: never;
@@ -7248,6 +8908,40 @@ export interface paths {
         get: operations["apps_platform_console_search_nav_counts"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/seat-swaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Seat Swaps */
+        get: operations["apps_platform_console_seat_swaps_seat_swaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/seat-swaps/{swap_id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide */
+        post: operations["apps_platform_console_seat_swaps_decide"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7806,6 +9500,11 @@ export interface components {
             /** Role */
             role: string;
             /**
+             * Onboarding State
+             * @default active
+             */
+            onboarding_state: string;
+            /**
              * Logo Url
              * @default
              */
@@ -8300,6 +9999,11 @@ export interface components {
             /** Instructors */
             instructors: string[];
             price: components["schemas"]["PriceOut"] | null;
+            /**
+             * Price From
+             * @default false
+             */
+            price_from: boolean;
         };
         /** CoursePage */
         CoursePage: {
@@ -8355,6 +10059,11 @@ export interface components {
             /** Instructors */
             instructors: string[];
             price: components["schemas"]["PriceOut"] | null;
+            /**
+             * Price From
+             * @default false
+             */
+            price_from: boolean;
             /** Description */
             description: string;
             /** Cpd Hours */
@@ -8386,6 +10095,44 @@ export interface components {
              * @default true
              */
             in_subscription: boolean;
+            /**
+             * Kind
+             * @default short
+             */
+            kind: string;
+            /**
+             * Modules
+             * @default []
+             */
+            modules: components["schemas"]["CourseModuleOut"][];
+            /**
+             * Offers
+             * @default []
+             */
+            offers: components["schemas"]["ProgramOfferOut"][];
+            /**
+             * Intakes
+             * @default []
+             */
+            intakes: components["schemas"]["ProgramIntakeOut"][];
+            program_access?: components["schemas"]["ProgramAccessOut"] | null;
+        };
+        /** CourseModuleOut */
+        CourseModuleOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
         };
         /** InstructorBrief */
         InstructorBrief: {
@@ -8442,6 +10189,74 @@ export interface components {
              */
             excluded_from_subscription: boolean;
         };
+        /**
+         * ProgramAccessOut
+         * @description What the signed-in learner already has in this program.
+         */
+        ProgramAccessOut: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /** Scope */
+            scope: string;
+            /** Module Keys */
+            module_keys: string[];
+            /** Live */
+            live: boolean;
+            /** Cohort Id */
+            cohort_id: string | null;
+            /**
+             * Paused
+             * @default false
+             */
+            paused: boolean;
+            /**
+             * Paying Monthly
+             * @default false
+             */
+            paying_monthly: boolean;
+        };
+        /** ProgramIntakeOut */
+        ProgramIntakeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** End Date */
+            end_date: string | null;
+            /** Places Left */
+            places_left: number | null;
+        };
+        /**
+         * ProgramOfferOut
+         * @description One way to buy a program or one of its modules (M21).
+         */
+        ProgramOfferOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Module Key */
+            module_key: string | null;
+            /** Mode */
+            mode: string;
+            price: components["schemas"]["PriceOut"] | null;
+            /** Token Price */
+            token_price: number | null;
+            /** Instalments Max */
+            instalments_max: number;
+        };
         /** SectionOut */
         SectionOut: {
             /**
@@ -8453,6 +10268,8 @@ export interface components {
             title: string;
             /** Lectures */
             lectures: components["schemas"]["LectureOut"][];
+            /** Module Id */
+            module_id?: string | null;
         };
         /** ViewerOut */
         ViewerOut: {
@@ -8535,6 +10352,11 @@ export interface components {
             access_expires_at: string | null;
             /** Certificate Id */
             certificate_id: string | null;
+            /** Group Name */
+            group_name?: string | null;
+            /** Cohort Name */
+            cohort_name?: string | null;
+            next_week?: components["schemas"]["MyCourseWeek"] | null;
         };
         /** MyCoursePage */
         MyCoursePage: {
@@ -8542,6 +10364,48 @@ export interface components {
             items: components["schemas"]["MyCourse"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /** MyCourseWeek */
+        MyCourseWeek: {
+            /** Number */
+            number: number;
+            /** Title */
+            title: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+        };
+        /** PlayerDayOff */
+        PlayerDayOff: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Title */
+            title: string;
+        };
+        /** PlayerGroup */
+        PlayerGroup: {
+            /** Name */
+            name: string;
+            /** Cohort Name */
+            cohort_name: string;
+            /** Weekday */
+            weekday?: number | null;
+            /** Starts At */
+            starts_at?: string | null;
+            /** Ends At */
+            ends_at?: string | null;
+            /** Tutor Name */
+            tutor_name?: string | null;
         };
         /** PlayerLecture */
         PlayerLecture: {
@@ -8569,6 +10433,32 @@ export interface components {
             prerequisite_key?: string | null;
             /** Prerequisite Title */
             prerequisite_title?: string | null;
+            /**
+             * Module Locked
+             * @default false
+             */
+            module_locked: boolean;
+        };
+        /** PlayerModule */
+        PlayerModule: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Starts On */
+            starts_on?: string | null;
+            /** Ends On */
+            ends_on?: string | null;
+            /**
+             * Owned
+             * @default true
+             */
+            owned: boolean;
         };
         /** PlayerOut */
         PlayerOut: {
@@ -8596,6 +10486,19 @@ export interface components {
             certificate_id: string | null;
             /** Sections */
             sections: components["schemas"]["PlayerSection"][];
+            /**
+             * Kind
+             * @default short
+             */
+            kind: string;
+            /**
+             * Modules
+             * @default []
+             */
+            modules: components["schemas"]["PlayerModule"][];
+            group?: components["schemas"]["PlayerGroup"] | null;
+            /** Current Section Id */
+            current_section_id?: string | null;
         };
         /** PlayerSection */
         PlayerSection: {
@@ -8608,6 +10511,19 @@ export interface components {
             title: string;
             /** Lectures */
             lectures: components["schemas"]["PlayerLecture"][];
+            /** Module Id */
+            module_id?: string | null;
+            /** Week Number */
+            week_number?: number | null;
+            /** Starts On */
+            starts_on?: string | null;
+            /** Ends On */
+            ends_on?: string | null;
+            /**
+             * Days Off
+             * @default []
+             */
+            days_off: components["schemas"]["PlayerDayOff"][];
         };
         /** AttemptSummary */
         AttemptSummary: {
@@ -8725,6 +10641,16 @@ export interface components {
              * @default manual
              */
             provider: string;
+            /**
+             * Status
+             * @default scheduled
+             */
+            status: string;
+            /**
+             * Join Early Min
+             * @default 15
+             */
+            join_early_min: number;
         };
         /** ResourceOut */
         ResourceOut: {
@@ -9118,6 +11044,251 @@ export interface components {
              * @default false
              */
             is_expired: boolean;
+        };
+        /** LearnerCpdModuleOut */
+        LearnerCpdModuleOut: {
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Title */
+            title: string;
+            /** Earned Min */
+            earned_min: number;
+            /** Available Min */
+            available_min: number;
+        };
+        /** LearnerCpdOut */
+        LearnerCpdOut: {
+            /**
+             * Workshops Min
+             * @default 0
+             */
+            workshops_min: number;
+            /** Earned Min */
+            earned_min: number;
+            /** Available Min */
+            available_min: number;
+            /** Modules */
+            modules: components["schemas"]["LearnerCpdModuleOut"][];
+        };
+        /** LearnerKsbOut */
+        LearnerKsbOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Kind */
+            kind: string;
+            /** Text */
+            text: string;
+            /** Status */
+            status: string;
+            /** Done */
+            done: number;
+            /** Total */
+            total: number;
+        };
+        /** LearnerModuleCertificateOut */
+        LearnerModuleCertificateOut: {
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Module Title */
+            module_title: string;
+            /** Cpd Min */
+            cpd_min: number;
+            /** Verification Code */
+            verification_code: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+        };
+        /** LearnerOtjSummaryOut */
+        LearnerOtjSummaryOut: {
+            /** Counted Min */
+            counted_min: number;
+            /** Pending Min */
+            pending_min: number;
+            /** Expected Min */
+            expected_min: number | null;
+            /** Target Min */
+            target_min: number | null;
+            /** Target Mode */
+            target_mode: string;
+            /** Rag */
+            rag: string | null;
+            /** Daily Cap Min */
+            daily_cap_min: number;
+        };
+        /** LearnerRecordOut */
+        LearnerRecordOut: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /** Program Title */
+            program_title: string;
+            /** Slug */
+            slug: string;
+            otj: components["schemas"]["LearnerOtjSummaryOut"];
+            /** Ksbs */
+            ksbs: components["schemas"]["LearnerKsbOut"][];
+            cpd: components["schemas"]["LearnerCpdOut"];
+            /** Certificates */
+            certificates: components["schemas"]["LearnerModuleCertificateOut"][];
+        };
+        /** LearnerOtjEntryOut */
+        LearnerOtjEntryOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Source */
+            source: string;
+            /** Minutes */
+            minutes: number;
+            /**
+             * Occurred On
+             * Format: date
+             */
+            occurred_on: string;
+            /** Status */
+            status: string;
+            /** Note */
+            note: string;
+            /** Decision Note */
+            decision_note: string;
+        };
+        /** LearnerOtjPageOut */
+        LearnerOtjPageOut: {
+            /** Items */
+            items: components["schemas"]["LearnerOtjEntryOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** LearnerIdOut */
+        LearnerIdOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /** LearnerOtjLogIn */
+        LearnerOtjLogIn: {
+            /**
+             * Occurred On
+             * Format: date
+             */
+            occurred_on: string;
+            /** Minutes */
+            minutes: number;
+            /** Note */
+            note: string;
+        };
+        /** LearnerSessionOut */
+        LearnerSessionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Lecture Key
+             * Format: uuid
+             */
+            lecture_key: string;
+            /** Title */
+            title: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Status */
+            status: string;
+            /** Provider */
+            provider: string;
+            /** Join Url */
+            join_url: string | null;
+            /** Has Link */
+            has_link: boolean;
+            recording: components["schemas"]["PlaybackOut"] | null;
+            /** Attended Min */
+            attended_min: number | null;
+        };
+        /** LearnerSessionsOut */
+        LearnerSessionsOut: {
+            /** Items */
+            items: components["schemas"]["LearnerSessionOut"][];
+            /** Group Name */
+            group_name: string | null;
+            /** Join Early Min */
+            join_early_min: number;
+            /** Present Min */
+            present_min: number;
+        };
+        /** LearnerWorkshopOut */
+        LearnerWorkshopOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Status */
+            status: string;
+            /** Capacity */
+            capacity: number | null;
+            /** Spaces Left */
+            spaces_left: number | null;
+            /** Booked */
+            booked: boolean;
+            /** Join Url */
+            join_url: string | null;
+            recording: components["schemas"]["PlaybackOut"] | null;
+            /** Attended Min */
+            attended_min: number | null;
+            /** Expected Otj Min */
+            expected_otj_min: number;
+            /** Cpd Min */
+            cpd_min: number;
+        };
+        /** LearnerWorkshopsOut */
+        LearnerWorkshopsOut: {
+            /** Items */
+            items: components["schemas"]["LearnerWorkshopOut"][];
+            /** Present Min */
+            present_min: number;
         };
         /** AttentionOut */
         AttentionOut: {
@@ -9771,6 +11942,55 @@ export interface components {
             /** Coupon */
             coupon?: string | null;
         };
+        /** ProgramCheckoutIn */
+        ProgramCheckoutIn: {
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /** Currency */
+            currency: string;
+            /** Cohort Id */
+            cohort_id?: string | null;
+            /**
+             * Instalments
+             * @default 1
+             */
+            instalments: number;
+        };
+        /** ProgramUnlockOut */
+        ProgramUnlockOut: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+        };
+        /** ProgramUnlockIn */
+        ProgramUnlockIn: {
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+        };
+        /**
+         * InstalmentsOut
+         * @description A program paid monthly (M21).
+         */
+        InstalmentsOut: {
+            /** Count */
+            count: number;
+            /** Paid Count */
+            paid_count: number;
+            /** Amount Minor */
+            amount_minor: number;
+            /** Status */
+            status: string;
+            /** Grace Until */
+            grace_until: string | null;
+        };
         /** OrderItemOut */
         OrderItemOut: {
             /**
@@ -9793,6 +12013,8 @@ export interface components {
             refunded_at: string | null;
             /** Refundable */
             refundable: boolean;
+            /** Offer Label */
+            offer_label?: string | null;
         };
         /** OrderOut */
         OrderOut: {
@@ -9822,6 +12044,7 @@ export interface components {
             paid_at: string | null;
             /** Items */
             items: components["schemas"]["OrderItemOut"][];
+            instalments?: components["schemas"]["InstalmentsOut"] | null;
         };
         /** OrderPage */
         OrderPage: {
@@ -11385,6 +13608,701 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** SeatSignupOut */
+        SeatSignupOut: {
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /** Name */
+            name: string;
+            /** Onboarding State */
+            onboarding_state: string;
+        };
+        /** SeatSignupIn */
+        SeatSignupIn: {
+            /** Name */
+            name: string;
+            /**
+             * Currency
+             * @default GBP
+             */
+            currency: string;
+        };
+        /** SeatLineOut */
+        SeatLineOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /**
+             * Program Id
+             * Format: uuid
+             */
+            program_id: string;
+            /** Program Title */
+            program_title: string;
+            /** Module Key */
+            module_key: string | null;
+            /** Module Title */
+            module_title: string | null;
+            /** Mode */
+            mode: string;
+            /** Cohort Id */
+            cohort_id: string | null;
+            /** Cohort Name */
+            cohort_name: string | null;
+            /** Cohort Start */
+            cohort_start: string | null;
+            /** Seats */
+            seats: number;
+            /** Used */
+            used: number;
+            /** Unit Minor */
+            unit_minor: number;
+            /** Total Minor */
+            total_minor: number;
+        };
+        /** SeatOrderOut */
+        SeatOrderOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
+            /** Currency */
+            currency: string;
+            /** Total Minor */
+            total_minor: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Paid At */
+            paid_at: string | null;
+            /** Lines */
+            lines: components["schemas"]["SeatLineOut"][];
+        };
+        /** SeatSetupOut */
+        SeatSetupOut: {
+            /** Org Name */
+            org_name: string;
+            /** Onboarding State */
+            onboarding_state: string;
+            /** Currency */
+            currency: string;
+            /** Exponent */
+            exponent: number;
+            draft: components["schemas"]["SeatOrderOut"] | null;
+        };
+        /** SeatCatalogueOut */
+        SeatCatalogueOut: {
+            /** Currency */
+            currency: string;
+            /** Exponent */
+            exponent: number;
+            /** Programs */
+            programs: components["schemas"]["SeatProgramOut"][];
+        };
+        /** SeatIntakeOut */
+        SeatIntakeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** End Date */
+            end_date: string | null;
+            /** Places Left */
+            places_left: number | null;
+        };
+        /** SeatOfferOut */
+        SeatOfferOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Module Key */
+            module_key: string | null;
+            /** Module Title */
+            module_title: string | null;
+            /** Mode */
+            mode: string;
+            /** Unit Minor */
+            unit_minor: number;
+        };
+        /** SeatProgramOut */
+        SeatProgramOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Slug */
+            slug: string;
+            /** Min Seats */
+            min_seats: number;
+            /** Offers */
+            offers: components["schemas"]["SeatOfferOut"][];
+            /** Intakes */
+            intakes: components["schemas"]["SeatIntakeOut"][];
+        };
+        /** SeatDraftIn */
+        SeatDraftIn: {
+            /** Lines */
+            lines: components["schemas"]["SeatDraftLineIn"][];
+        };
+        /** SeatDraftLineIn */
+        SeatDraftLineIn: {
+            /**
+             * Offer Id
+             * Format: uuid
+             */
+            offer_id: string;
+            /** Cohort Id */
+            cohort_id?: string | null;
+            /** Seats */
+            seats: number;
+        };
+        /** SeatCheckoutOut */
+        SeatCheckoutOut: {
+            /** Checkout Url */
+            checkout_url: string;
+        };
+        /** SeatOrdersOut */
+        SeatOrdersOut: {
+            /** Exponent */
+            exponent: number;
+            /** Can Buy */
+            can_buy: boolean;
+            /** Items */
+            items: components["schemas"]["SeatOrderOut"][];
+        };
+        /** SeatHolderOut */
+        SeatHolderOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Line Id
+             * Format: uuid
+             */
+            line_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Status */
+            status: string;
+            /** Progress Pct */
+            progress_pct: number;
+            /** Started */
+            started: boolean;
+            /** Past Cutoff */
+            past_cutoff: boolean;
+            /** Open Swap Id */
+            open_swap_id: string | null;
+            /**
+             * Allocated At
+             * Format: date-time
+             */
+            allocated_at: string;
+        };
+        /** SeatHoldersOut */
+        SeatHoldersOut: {
+            /** Items */
+            items: components["schemas"]["SeatHolderOut"][];
+            /** Can Release */
+            can_release: boolean;
+        };
+        /** SeatAllocateIn */
+        SeatAllocateIn: {
+            /**
+             * Line Id
+             * Format: uuid
+             */
+            line_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
+        /** SeatOkOut */
+        SeatOkOut: {
+            /** Ok */
+            ok: boolean;
+        };
+        /** SeatSwapOut */
+        SeatSwapOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
+            /** Program Title */
+            program_title: string;
+            /** Module Title */
+            module_title: string | null;
+            /** From Name */
+            from_name: string;
+            /** From Email */
+            from_email: string;
+            /** To Name */
+            to_name: string;
+            /** To Email */
+            to_email: string;
+            /** Reason */
+            reason: string;
+            /** After Cutoff */
+            after_cutoff: boolean;
+            /** Requested By Name */
+            requested_by_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decision Note */
+            decision_note: string;
+            /** Can Decide */
+            can_decide: boolean;
+            /** Can Cancel */
+            can_cancel: boolean;
+        };
+        /** SeatSwapIn */
+        SeatSwapIn: {
+            /**
+             * To User Id
+             * Format: uuid
+             */
+            to_user_id: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** SeatSwapsOut */
+        SeatSwapsOut: {
+            /** Items */
+            items: components["schemas"]["SeatSwapOut"][];
+        };
+        /** SeatDecideIn */
+        SeatDecideIn: {
+            /** Approve */
+            approve: boolean;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** SeatTeamOut */
+        SeatTeamOut: {
+            /** Items */
+            items: components["schemas"]["SeatTeamRowOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** SeatTeamRowOut */
+        SeatTeamRowOut: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Program Title */
+            program_title: string;
+            /** Slug */
+            slug: string;
+            /** Live */
+            live: boolean;
+            /** Cohort Name */
+            cohort_name: string | null;
+            /** Group Name */
+            group_name: string | null;
+            /** Progress Pct */
+            progress_pct: number;
+            /** Ksb Met */
+            ksb_met: number;
+            /** Ksb Total */
+            ksb_total: number;
+            /** Otj Rag */
+            otj_rag: string | null;
+            /** Otj Counted Min */
+            otj_counted_min: number;
+            /** Otj Expected Min */
+            otj_expected_min: number | null;
+            /** Sessions Past */
+            sessions_past: number;
+            /** Sessions Attended */
+            sessions_attended: number;
+        };
+        /** HrConnectionOut */
+        HrConnectionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Provider */
+            provider: string;
+            /** Account Name */
+            account_name: string;
+            /** External Account Id */
+            external_account_id: string;
+            /**
+             * Environment
+             * @enum {string}
+             */
+            environment: "production" | "sandbox";
+            /** Status */
+            status: string;
+            /** Features */
+            features: string[];
+            /** Last Verified At */
+            last_verified_at: string | null;
+            /** Last Sync At */
+            last_sync_at: string | null;
+            /** Last Error */
+            last_error: string;
+        };
+        /** HrCountsOut */
+        HrCountsOut: {
+            /** People */
+            people: number;
+            /** To Review */
+            to_review: number;
+            /** Linked */
+            linked: number;
+            /** Invited */
+            invited: number;
+            /** Leavers */
+            leavers: number;
+            /** Departments */
+            departments: number;
+            /** Departments Linked */
+            departments_linked: number;
+            /** Training */
+            training: number;
+            /** Training Applied */
+            training_applied: number;
+            /** On Leave */
+            on_leave: number;
+        };
+        /** HrOverviewOut */
+        HrOverviewOut: {
+            /** Configured */
+            configured: boolean;
+            /** Can Manage */
+            can_manage: boolean;
+            connection: components["schemas"]["HrConnectionOut"] | null;
+            counts: components["schemas"]["HrCountsOut"] | null;
+            latest_run: components["schemas"]["HrRunOut"] | null;
+        };
+        /** HrRunOut */
+        HrRunOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
+            /** Trigger */
+            trigger: string;
+            /** Counts */
+            counts: {
+                [key: string]: unknown;
+            };
+            /** Error Message */
+            error_message: string;
+            /** Triggered By */
+            triggered_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+        };
+        /** HrConnectIn */
+        HrConnectIn: {
+            /** Api Key */
+            api_key: string;
+            /**
+             * Environment
+             * @default production
+             * @enum {string}
+             */
+            environment: "production" | "sandbox";
+            /**
+             * Features
+             * @default [
+             *       "departments",
+             *       "managers",
+             *       "training",
+             *       "leave"
+             *     ]
+             */
+            features: string[];
+        };
+        /** HrKeyIn */
+        HrKeyIn: {
+            /** Api Key */
+            api_key: string;
+        };
+        /** HrFeaturesIn */
+        HrFeaturesIn: {
+            /** Features */
+            features: string[];
+        };
+        /** HrPauseIn */
+        HrPauseIn: {
+            /** Paused */
+            paused: boolean;
+        };
+        /** HrMemberRef */
+        HrMemberRef: {
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+        };
+        /** HrPersonOut */
+        HrPersonOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** External Employee Id */
+            external_employee_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Job Title */
+            job_title: string;
+            /** Department */
+            department: string;
+            /** Employment Status */
+            employment_status: string;
+            /** Start Date */
+            start_date: string | null;
+            /** Contracted Hours */
+            contracted_hours: number | null;
+            /** Working Pattern */
+            working_pattern: string;
+            /** Status */
+            status: string;
+            /** Is Leaver */
+            is_leaver: boolean;
+            member: components["schemas"]["HrMemberRef"] | null;
+            suggestion: components["schemas"]["HrMemberRef"] | null;
+        };
+        /** HrPersonPage */
+        HrPersonPage: {
+            /** Items */
+            items: components["schemas"]["HrPersonOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** HrMatchIn */
+        HrMatchIn: {
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+        };
+        /** HrInviteOut */
+        HrInviteOut: {
+            /**
+             * Invite Id
+             * Format: uuid
+             */
+            invite_id: string;
+            /** Email */
+            email: string;
+        };
+        /** HrInviteIn */
+        HrInviteIn: {
+            /**
+             * Role
+             * @default learner
+             */
+            role: string;
+            /** Unit Id */
+            unit_id?: string | null;
+            /** Job Role Id */
+            job_role_id?: string | null;
+        };
+        /** HrDepartmentOut */
+        HrDepartmentOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** External Department Id */
+            external_department_id: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /** Unit Id */
+            unit_id: string | null;
+            /** Unit Name */
+            unit_name: string | null;
+            /** People */
+            people: number;
+        };
+        /** HrDepartmentLinkIn */
+        HrDepartmentLinkIn: {
+            /** Unit Id */
+            unit_id?: string | null;
+            /**
+             * Create
+             * @default false
+             */
+            create: boolean;
+        };
+        /** HrTrainingTitleOut */
+        HrTrainingTitleOut: {
+            /** Title */
+            title: string;
+            /** Records */
+            records: number;
+            /** Applied */
+            applied: number;
+            /** Requirement Id */
+            requirement_id: string | null;
+            /** Requirement Name */
+            requirement_name: string | null;
+        };
+        /** HrTrainingMapOut */
+        HrTrainingMapOut: {
+            /** Applied */
+            applied: number;
+        };
+        /** HrTrainingMapIn */
+        HrTrainingMapIn: {
+            /** Title */
+            title: string;
+            /** Requirement Id */
+            requirement_id?: string | null;
+        };
+        /** HrTrainingRecordOut */
+        HrTrainingRecordOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Person Name */
+            person_name: string | null;
+            /** Title */
+            title: string;
+            /** Completion Date */
+            completion_date: string | null;
+            /** Status */
+            status: string;
+            /** Applied */
+            applied: boolean;
+        };
+        /** HrLeaveOut */
+        HrLeaveOut: {
+            /**
+             * Member Id
+             * Format: uuid
+             */
+            member_id: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Leave Type */
+            leave_type: string;
+            /** Current */
+            current: boolean;
+        };
+        /** HrMemberLinkOut */
+        HrMemberLinkOut: {
+            /** Linked */
+            linked: boolean;
+            /** Provider */
+            provider?: string | null;
+            /** External Employee Id */
+            external_employee_id?: string | null;
+            /** Job Title */
+            job_title?: string | null;
+            /** Department */
+            department?: string | null;
+            /** Employment Status */
+            employment_status?: string | null;
+            /** Start Date */
+            start_date?: string | null;
+            /**
+             * Is Leaver
+             * @default false
+             */
+            is_leaver: boolean;
+            leave?: components["schemas"]["HrLeaveOut"] | null;
+        };
         /** StudioStatusOut */
         StudioStatusOut: {
             /** Status */
@@ -11486,6 +14404,8 @@ export interface components {
             status: string;
             /** Ownership */
             ownership: string;
+            /** Kind */
+            kind: string;
             /** Cpd Hours */
             cpd_hours?: number | null;
             /** In Subscription */
@@ -11587,6 +14507,16 @@ export interface components {
             teams_organizer: string;
             /** Min Watch Pct */
             min_watch_pct: number;
+            /**
+             * Expected Otj Min
+             * @default 0
+             */
+            expected_otj_min: number;
+            /**
+             * Cpd Min
+             * @default 0
+             */
+            cpd_min: number;
             /** Prerequisite Key */
             prerequisite_key?: string | null;
             /** Resources */
@@ -11594,6 +14524,25 @@ export interface components {
             video?: components["schemas"]["StudioEditorVideoOut"] | null;
             quiz?: components["schemas"]["StudioEditorQuizOut"] | null;
             assignment?: components["schemas"]["StudioEditorAssignmentOut"] | null;
+        };
+        /** StudioEditorModuleOut */
+        StudioEditorModuleOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Position */
+            position: number;
         };
         /** StudioEditorOptionOut */
         StudioEditorOptionOut: {
@@ -11681,6 +14630,8 @@ export interface components {
             description: string;
             /** Position */
             position: number;
+            /** Module Id */
+            module_id?: string | null;
             /** Lectures */
             lectures: components["schemas"]["StudioEditorLectureOut"][];
         };
@@ -11736,6 +14687,11 @@ export interface components {
             editable: boolean;
             /** Checklist */
             checklist: string[];
+            /**
+             * Modules
+             * @default []
+             */
+            modules: components["schemas"]["StudioEditorModuleOut"][];
             /** Sections */
             sections: components["schemas"]["StudioEditorSectionOut"][];
         };
@@ -11833,11 +14789,53 @@ export interface components {
              * @default
              */
             description: string;
+            /** Module Id */
+            module_id?: string | null;
+        };
+        /** StudioModuleCreateOut */
+        StudioModuleCreateOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Key
+             * Format: uuid
+             */
+            key: string;
+            /** Position */
+            position: number;
+        };
+        /** ModuleIn */
+        ModuleIn: {
+            /** Title */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
         };
         /** OrderIn */
         OrderIn: {
             /** Ids */
             ids: string[];
+        };
+        /** ModulePatch */
+        ModulePatch: {
+            /** Title */
+            title?: string | null;
+            /** Description */
+            description?: string | null;
+        };
+        /** WeekMoveIn */
+        WeekMoveIn: {
+            /**
+             * Module Id
+             * Format: uuid
+             */
+            module_id: string;
         };
         /** StudioLectureCreateOut */
         StudioLectureCreateOut: {
@@ -11889,6 +14887,10 @@ export interface components {
             live_join_url?: string | null;
             /** Min Watch Pct */
             min_watch_pct?: number | null;
+            /** Expected Otj Min */
+            expected_otj_min?: number | null;
+            /** Cpd Min */
+            cpd_min?: number | null;
             /** Video Id */
             video_id?: string | null;
             /** Section Id */
@@ -17543,6 +20545,1145 @@ export interface components {
             /** Choices */
             choices: string[];
         };
+        /** ConsoleMeetingsStatusOut */
+        ConsoleMeetingsStatusOut: {
+            /** Teams Connected */
+            teams_connected: boolean;
+            /** Organizer */
+            organizer: string;
+        };
+        /** ConsoleLiveSessionListOut */
+        ConsoleLiveSessionListOut: {
+            /** Items */
+            items: components["schemas"]["ConsoleLiveSessionOut"][];
+            /** Teams Connected */
+            teams_connected: boolean;
+            /** Can Plan */
+            can_plan: boolean;
+            /** Time Zone */
+            time_zone: string;
+        };
+        /** ConsoleLiveSessionOut */
+        ConsoleLiveSessionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Lecture Key
+             * Format: uuid
+             */
+            lecture_key: string;
+            /** Title */
+            title: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Duration Min */
+            duration_min: number;
+            /** Status */
+            status: string;
+            /** Provider */
+            provider: string;
+            /** Join Url */
+            join_url: string;
+            /** Has Meeting */
+            has_meeting: boolean;
+            /** Recording State */
+            recording_state: string;
+            recording: components["schemas"]["PlaybackOut"] | null;
+            /** Present */
+            present: number;
+            /** Marked */
+            marked: number;
+            /** Attendance Synced At */
+            attendance_synced_at: string | null;
+        };
+        /** ConsoleLivePlanOut */
+        ConsoleLivePlanOut: {
+            /** Created */
+            created: number;
+            /** Moved */
+            moved: number;
+            /** Cancelled */
+            cancelled: number;
+            /** Skipped */
+            skipped: string[];
+        };
+        /** ConsoleLiveSessionPatchIn */
+        ConsoleLiveSessionPatchIn: {
+            /** Starts At */
+            starts_at?: string | null;
+            /** Duration Min */
+            duration_min?: number | null;
+            /** Join Url */
+            join_url?: string | null;
+            /** Status */
+            status?: string | null;
+        };
+        /** ConsoleLiveAttendanceOut */
+        ConsoleLiveAttendanceOut: {
+            /** Items */
+            items: components["schemas"]["ConsoleLiveAttendanceRowOut"][];
+            /** Duration Min */
+            duration_min: number;
+            /** Present Min */
+            present_min: number;
+            /** Started */
+            started: boolean;
+            /** Has Meeting */
+            has_meeting: boolean;
+        };
+        /** ConsoleLiveAttendanceRowOut */
+        ConsoleLiveAttendanceRowOut: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Minutes */
+            minutes: number | null;
+            /** Source */
+            source: string;
+        };
+        /** ConsoleLiveMarkedOut */
+        ConsoleLiveMarkedOut: {
+            /** Written */
+            written: number;
+        };
+        /** ConsoleLiveAttendanceIn */
+        ConsoleLiveAttendanceIn: {
+            /** Marks */
+            marks: components["schemas"]["ConsoleLiveAttendanceMarkIn"][];
+        };
+        /** ConsoleLiveAttendanceMarkIn */
+        ConsoleLiveAttendanceMarkIn: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /** Minutes */
+            minutes?: number | null;
+        };
+        /** ConsoleLiveBunnyUploadOut */
+        ConsoleLiveBunnyUploadOut: {
+            /** Endpoint */
+            endpoint: string;
+            /** Headers */
+            headers: {
+                [key: string]: string;
+            };
+            /** Expires At */
+            expires_at: number;
+        };
+        /** ConsoleLiveUploadOut */
+        ConsoleLiveUploadOut: {
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            upload: components["schemas"]["ConsoleLiveBunnyUploadOut"];
+        };
+        /** ConsoleLiveUploadIn */
+        ConsoleLiveUploadIn: {
+            /** Filename */
+            filename: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** ConsoleWorkshopListOut */
+        ConsoleWorkshopListOut: {
+            /** Items */
+            items: components["schemas"]["ConsoleWorkshopOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Can Manage */
+            can_manage: boolean;
+            /** Teams Connected */
+            teams_connected: boolean;
+        };
+        /** ConsoleWorkshopOut */
+        ConsoleWorkshopOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Program Id
+             * Format: uuid
+             */
+            program_id: string;
+            /** Program Title */
+            program_title: string;
+            /** Cohort Id */
+            cohort_id: string | null;
+            /** Cohort Name */
+            cohort_name: string | null;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Duration Min */
+            duration_min: number;
+            /** Capacity */
+            capacity: number | null;
+            /** Booked */
+            booked: number;
+            /** Expected Otj Min */
+            expected_otj_min: number;
+            /** Cpd Min */
+            cpd_min: number;
+            /** Status */
+            status: string;
+            /** Provider */
+            provider: string;
+            /** Join Url */
+            join_url: string;
+            /** Has Meeting */
+            has_meeting: boolean;
+            /** Recording State */
+            recording_state: string;
+            recording: components["schemas"]["PlaybackOut"] | null;
+        };
+        /** ConsoleWorkshopIn */
+        ConsoleWorkshopIn: {
+            /**
+             * Program Id
+             * Format: uuid
+             */
+            program_id: string;
+            /** Cohort Id */
+            cohort_id?: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /** Duration Min */
+            duration_min: number;
+            /** Capacity */
+            capacity?: number | null;
+            /**
+             * Expected Otj Min
+             * @default 0
+             */
+            expected_otj_min: number;
+            /**
+             * Cpd Min
+             * @default 0
+             */
+            cpd_min: number;
+            /**
+             * Join Url
+             * @default
+             */
+            join_url: string;
+        };
+        /** ConsoleWorkshopPatchIn */
+        ConsoleWorkshopPatchIn: {
+            /** Cohort Id */
+            cohort_id?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Starts At */
+            starts_at?: string | null;
+            /** Duration Min */
+            duration_min?: number | null;
+            /** Capacity */
+            capacity?: number | null;
+            /** Expected Otj Min */
+            expected_otj_min?: number | null;
+            /** Cpd Min */
+            cpd_min?: number | null;
+            /** Join Url */
+            join_url?: string | null;
+            /** Status */
+            status?: string | null;
+        };
+        /** ConsoleTeachingGroupOut */
+        ConsoleTeachingGroupOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Cohort Id
+             * Format: uuid
+             */
+            cohort_id: string;
+            /** Cohort Name */
+            cohort_name: string;
+            /** Program Title */
+            program_title: string;
+            /** Weekday */
+            weekday: number | null;
+            /** Starts At */
+            starts_at: string | null;
+            /** Ends At */
+            ends_at: string | null;
+            /** Learner Count */
+            learner_count: number;
+            /** Next Session At */
+            next_session_at: string | null;
+        };
+        /** ConsoleProgramListOut */
+        ConsoleProgramListOut: {
+            /** Items */
+            items: components["schemas"]["ConsoleProgramRowOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Can Build */
+            can_build: boolean;
+            /** Can Manage */
+            can_manage: boolean;
+            /** Default Calendar */
+            default_calendar: string;
+        };
+        /** ConsoleProgramRowOut */
+        ConsoleProgramRowOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Published */
+            published: boolean;
+            /** Module Count */
+            module_count: number;
+            /** Week Count */
+            week_count: number;
+            /** Cohort Count */
+            cohort_count: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ConsoleCohortRowOut */
+        ConsoleCohortRowOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** End Date */
+            end_date: string | null;
+            /** Calendar */
+            calendar: string;
+            /** Capacity */
+            capacity: number | null;
+            /** Group Count */
+            group_count: number;
+            /** Learner Count */
+            learner_count: number;
+        };
+        /** ConsoleProgramDetailOut */
+        ConsoleProgramDetailOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Published */
+            published: boolean;
+            /** Can Build */
+            can_build: boolean;
+            /** Can Manage */
+            can_manage: boolean;
+            /** Modules */
+            modules: components["schemas"]["ConsoleProgramModuleOut"][];
+            /** Cohorts */
+            cohorts: components["schemas"]["ConsoleCohortRowOut"][];
+        };
+        /** ConsoleProgramModuleOut */
+        ConsoleProgramModuleOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Title */
+            title: string;
+            /** Weeks */
+            weeks: components["schemas"]["ConsoleProgramWeekOut"][];
+        };
+        /** ConsoleProgramWeekOut */
+        ConsoleProgramWeekOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /** ConsoleProgramCohortIn */
+        ConsoleProgramCohortIn: {
+            /** Name */
+            name: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Calendar */
+            calendar?: string | null;
+            /** Capacity */
+            capacity?: number | null;
+        };
+        /** ConsoleCohortBreakOut */
+        ConsoleCohortBreakOut: {
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ConsoleCohortClosureOut */
+        ConsoleCohortClosureOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Reason */
+            reason: string;
+            /** Provider Wide */
+            provider_wide: boolean;
+        };
+        /** ConsoleCohortDayOffOut */
+        ConsoleCohortDayOffOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Title */
+            title: string;
+        };
+        /** ConsoleCohortDetailOut */
+        ConsoleCohortDetailOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Program Id
+             * Format: uuid
+             */
+            program_id: string;
+            /** Program Title */
+            program_title: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** End Date */
+            end_date: string | null;
+            /** Calendar */
+            calendar: string;
+            /** Capacity */
+            capacity: number | null;
+            /** Learner Count */
+            learner_count: number;
+            /** Can Manage */
+            can_manage: boolean;
+            /** Modules */
+            modules: components["schemas"]["ConsoleCohortModuleOut"][];
+            /** Breaks */
+            breaks: components["schemas"]["ConsoleCohortBreakOut"][];
+            /** Warnings */
+            warnings: string[];
+            /** Groups */
+            groups: components["schemas"]["ConsoleCohortGroupOut"][];
+            /** Closures */
+            closures: components["schemas"]["ConsoleCohortClosureOut"][];
+        };
+        /** ConsoleCohortGroupOut */
+        ConsoleCohortGroupOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /** Weekday */
+            weekday: number | null;
+            /** Starts At */
+            starts_at: string | null;
+            /** Ends At */
+            ends_at: string | null;
+            /** Capacity */
+            capacity: number | null;
+            /** Tutor Id */
+            tutor_id: string | null;
+            /** Tutor Name */
+            tutor_name: string | null;
+            /** Learner Count */
+            learner_count: number;
+        };
+        /** ConsoleCohortModuleOut */
+        ConsoleCohortModuleOut: {
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Title */
+            title: string;
+            /** Starts On */
+            starts_on: string | null;
+            /** Ends On */
+            ends_on: string | null;
+            /** Override */
+            override: string | null;
+            /** Weeks */
+            weeks: components["schemas"]["ConsoleCohortWeekOut"][];
+        };
+        /** ConsoleCohortWeekOut */
+        ConsoleCohortWeekOut: {
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+            /** Number */
+            number: number;
+            /** Title */
+            title: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Days Off */
+            days_off: components["schemas"]["ConsoleCohortDayOffOut"][];
+        };
+        /** ConsoleCohortPatchIn */
+        ConsoleCohortPatchIn: {
+            /** Name */
+            name?: string | null;
+            /** Start Date */
+            start_date?: string | null;
+            /** Calendar */
+            calendar?: string | null;
+            /** Capacity */
+            capacity?: number | null;
+            /** Status */
+            status?: string | null;
+        };
+        /** ConsoleModuleStartIn */
+        ConsoleModuleStartIn: {
+            /** Starts On */
+            starts_on?: string | null;
+        };
+        /** ConsoleGroupIn */
+        ConsoleGroupIn: {
+            /** Name */
+            name?: string | null;
+            /** Weekday */
+            weekday?: number | null;
+            /** Starts At */
+            starts_at?: string | null;
+            /** Ends At */
+            ends_at?: string | null;
+            /** Capacity */
+            capacity?: number | null;
+            /** Tutor Id */
+            tutor_id?: string | null;
+            /** Status */
+            status?: string | null;
+        };
+        /** ConsoleGroupMemberOut */
+        ConsoleGroupMemberOut: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /** Progress Pct */
+            progress_pct: number;
+            /** Status */
+            status: string;
+        };
+        /** ConsoleGroupMembersOut */
+        ConsoleGroupMembersOut: {
+            /** Items */
+            items: components["schemas"]["ConsoleGroupMemberOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** ConsoleGroupAddOut */
+        ConsoleGroupAddOut: {
+            /** Added */
+            added: number;
+            /** Not Found */
+            not_found: string[];
+        };
+        /** ConsoleGroupAddIn */
+        ConsoleGroupAddIn: {
+            /** Emails */
+            emails: string[];
+        };
+        /** ConsoleProgramTutorOut */
+        ConsoleProgramTutorOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+        };
+        /** ConsoleClosureIn */
+        ConsoleClosureIn: {
+            /** Cohort Id */
+            cohort_id?: string | null;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ConsoleHolidaySyncOut */
+        ConsoleHolidaySyncOut: {
+            /** Saved */
+            saved: number;
+        };
+        /** ConsoleProgramOfferModuleOut */
+        ConsoleProgramOfferModuleOut: {
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Title */
+            title: string;
+        };
+        /** ConsoleProgramOfferOut */
+        ConsoleProgramOfferOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Module Key */
+            module_key: string | null;
+            /** Module Title */
+            module_title: string | null;
+            /** Mode */
+            mode: string;
+            /** Tier Id */
+            tier_id: string | null;
+            /** Tier Name */
+            tier_name: string | null;
+            /** Gbp Minor */
+            gbp_minor: number | null;
+            /** Token Price */
+            token_price: number | null;
+            /** Instalments Max */
+            instalments_max: number;
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** ConsoleProgramOfferTierOut */
+        ConsoleProgramOfferTierOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Gbp Minor */
+            gbp_minor: number;
+        };
+        /** ConsoleProgramOffersOut */
+        ConsoleProgramOffersOut: {
+            /** Items */
+            items: components["schemas"]["ConsoleProgramOfferOut"][];
+            /** Tiers */
+            tiers: components["schemas"]["ConsoleProgramOfferTierOut"][];
+            /** Modules */
+            modules: components["schemas"]["ConsoleProgramOfferModuleOut"][];
+            /** Published */
+            published: boolean;
+            /** Can Edit */
+            can_edit: boolean;
+        };
+        /** ConsoleProgramOfferIn */
+        ConsoleProgramOfferIn: {
+            /** Module Key */
+            module_key?: string | null;
+            /** Mode */
+            mode: string;
+            /** Tier Id */
+            tier_id?: string | null;
+            /** Token Price */
+            token_price?: number | null;
+            /**
+             * Instalments Max
+             * @default 1
+             */
+            instalments_max: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /** ConsoleProgramOfferPatchIn */
+        ConsoleProgramOfferPatchIn: {
+            /** Tier Id */
+            tier_id?: string | null;
+            /** Token Price */
+            token_price?: number | null;
+            /** Instalments Max */
+            instalments_max?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
+        /** ConsoleProgramSettingsOut */
+        ConsoleProgramSettingsOut: {
+            /** Ksb Standard Id */
+            ksb_standard_id: string | null;
+            /** Otj Target Mode */
+            otj_target_mode: string;
+            /** Otj Target Value */
+            otj_target_value: number;
+            /** Otj Amber Pct */
+            otj_amber_pct: number;
+            /** Otj Daily Cap Min */
+            otj_daily_cap_min: number;
+            /** Min Seats Per Line */
+            min_seats_per_line: number;
+            /** Swap Cutoff Mode */
+            swap_cutoff_mode: string;
+            /** Swap Cutoff Value */
+            swap_cutoff_value: number;
+            /** Can Build */
+            can_build: boolean;
+        };
+        /** ConsoleProgramSettingsIn */
+        ConsoleProgramSettingsIn: {
+            /** Ksb Standard Id */
+            ksb_standard_id?: string | null;
+            /**
+             * Clear Ksb Standard
+             * @default false
+             */
+            clear_ksb_standard: boolean;
+            /** Otj Target Mode */
+            otj_target_mode?: string | null;
+            /** Otj Target Value */
+            otj_target_value?: number | string | null;
+            /** Otj Amber Pct */
+            otj_amber_pct?: number | null;
+            /** Otj Daily Cap Min */
+            otj_daily_cap_min?: number | null;
+            /** Min Seats Per Line */
+            min_seats_per_line?: number | null;
+            /** Swap Cutoff Mode */
+            swap_cutoff_mode?: string | null;
+            /** Swap Cutoff Value */
+            swap_cutoff_value?: number | null;
+        };
+        /** ConsoleKsbStandardOut */
+        ConsoleKsbStandardOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Title */
+            title: string;
+            /** Version */
+            version: string;
+            /** Level */
+            level: number | null;
+            /** Source */
+            source: string;
+            /** Item Count */
+            item_count: number;
+        };
+        /** ConsoleKsbCustomIn */
+        ConsoleKsbCustomIn: {
+            /** Code */
+            code: string;
+            /** Title */
+            title: string;
+        };
+        /** ConsoleKsbItemOut */
+        ConsoleKsbItemOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Kind */
+            kind: string;
+            /** Text */
+            text: string;
+        };
+        /** ConsoleKsbStandardDetailOut */
+        ConsoleKsbStandardDetailOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Title */
+            title: string;
+            /** Version */
+            version: string;
+            /** Level */
+            level: number | null;
+            /** Source */
+            source: string;
+            /** Item Count */
+            item_count: number;
+            /** Items */
+            items: components["schemas"]["ConsoleKsbItemOut"][];
+        };
+        /** ConsoleKsbSavedOut */
+        ConsoleKsbSavedOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Added */
+            added: number;
+        };
+        /** ConsoleKsbFetchIn */
+        ConsoleKsbFetchIn: {
+            /** Code */
+            code: string;
+        };
+        /** ConsoleKsbUploadIn */
+        ConsoleKsbUploadIn: {
+            /** Standard */
+            standard: {
+                [key: string]: unknown;
+            } | {
+                [key: string]: unknown;
+            }[];
+        };
+        /** ConsoleKsbItemIn */
+        ConsoleKsbItemIn: {
+            /** Kind */
+            kind: string;
+            /** Text */
+            text: string;
+        };
+        /** ConsoleKsbComponentOut */
+        ConsoleKsbComponentOut: {
+            /**
+             * Lecture Key
+             * Format: uuid
+             */
+            lecture_key: string;
+            /** Title */
+            title: string;
+            /** Kind */
+            kind: string;
+            /** Week */
+            week: string;
+            /** Module */
+            module: string | null;
+            /** Item Ids */
+            item_ids: string[];
+        };
+        /** ConsoleKsbMapOut */
+        ConsoleKsbMapOut: {
+            standard: components["schemas"]["ConsoleKsbStandardDetailOut"] | null;
+            /** Components */
+            components: components["schemas"]["ConsoleKsbComponentOut"][];
+            /** Can Build */
+            can_build: boolean;
+        };
+        /** ConsoleKsbMapIn */
+        ConsoleKsbMapIn: {
+            /** Item Ids */
+            item_ids: string[];
+        };
+        /** ConsoleOtjPendingOut */
+        ConsoleOtjPendingOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /** Learner Name */
+            learner_name: string;
+            /** Learner Email */
+            learner_email: string;
+            /** Program Title */
+            program_title: string;
+            /** Group Name */
+            group_name: string | null;
+            /**
+             * Occurred On
+             * Format: date
+             */
+            occurred_on: string;
+            /** Minutes */
+            minutes: number;
+            /** Note */
+            note: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ConsoleOtjPendingPageOut */
+        ConsoleOtjPendingPageOut: {
+            /** Items */
+            items: components["schemas"]["ConsoleOtjPendingOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** ConsoleOtjDecideIn */
+        ConsoleOtjDecideIn: {
+            /** Approve */
+            approve: boolean;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** ConsoleLearnerRecordOut */
+        ConsoleLearnerRecordOut: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /** Learner Name */
+            learner_name: string;
+            /** Learner Email */
+            learner_email: string;
+            /** Program Title */
+            program_title: string;
+            /** Slug */
+            slug: string;
+            otj: components["schemas"]["ConsoleOtjSummaryOut"];
+            /** Ksbs */
+            ksbs: components["schemas"]["ConsoleRecordKsbOut"][];
+            cpd: components["schemas"]["ConsoleRecordCpdOut"];
+            /** Certificates */
+            certificates: components["schemas"]["ConsoleRecordCertificateOut"][];
+        };
+        /** ConsoleOtjSummaryOut */
+        ConsoleOtjSummaryOut: {
+            /** Counted Min */
+            counted_min: number;
+            /** Pending Min */
+            pending_min: number;
+            /** Expected Min */
+            expected_min: number | null;
+            /** Target Min */
+            target_min: number | null;
+            /** Target Mode */
+            target_mode: string;
+            /** Rag */
+            rag: string | null;
+            /** Daily Cap Min */
+            daily_cap_min: number;
+        };
+        /** ConsoleRecordCertificateOut */
+        ConsoleRecordCertificateOut: {
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Module Title */
+            module_title: string;
+            /** Cpd Min */
+            cpd_min: number;
+            /** Verification Code */
+            verification_code: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+        };
+        /** ConsoleRecordCpdModuleOut */
+        ConsoleRecordCpdModuleOut: {
+            /**
+             * Module Key
+             * Format: uuid
+             */
+            module_key: string;
+            /** Title */
+            title: string;
+            /** Earned Min */
+            earned_min: number;
+            /** Available Min */
+            available_min: number;
+        };
+        /** ConsoleRecordCpdOut */
+        ConsoleRecordCpdOut: {
+            /**
+             * Workshops Min
+             * @default 0
+             */
+            workshops_min: number;
+            /** Earned Min */
+            earned_min: number;
+            /** Available Min */
+            available_min: number;
+            /** Modules */
+            modules: components["schemas"]["ConsoleRecordCpdModuleOut"][];
+        };
+        /** ConsoleRecordKsbOut */
+        ConsoleRecordKsbOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Kind */
+            kind: string;
+            /** Text */
+            text: string;
+            /** Status */
+            status: string;
+            /** Done */
+            done: number;
+            /** Total */
+            total: number;
+        };
         /** ConsolePromoOverviewOut */
         ConsolePromoOverviewOut: {
             /** Active */
@@ -17888,6 +22029,64 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** ConsoleStaffPermissionOut */
+        ConsoleStaffPermissionOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+        };
+        /** ConsoleStaffRoleOut */
+        ConsoleStaffRoleOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Permissions */
+            permissions: string[];
+            /** Is System */
+            is_system: boolean;
+            /** Member Count */
+            member_count: number;
+        };
+        /** ConsoleStaffRolesOut */
+        ConsoleStaffRolesOut: {
+            /** Roles */
+            roles: components["schemas"]["ConsoleStaffRoleOut"][];
+            /** Permissions */
+            permissions: components["schemas"]["ConsoleStaffPermissionOut"][];
+        };
+        /** ConsoleStaffRoleIn */
+        ConsoleStaffRoleIn: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Permissions */
+            permissions?: string[] | null;
+        };
+        /** ConsoleStaffRoleMemberOut */
+        ConsoleStaffRoleMemberOut: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+        };
+        /** ConsoleStaffRoleMemberIn */
+        ConsoleStaffRoleMemberIn: {
+            /** Email */
+            email: string;
+        };
         /** ConsoleSearchGroupOut */
         ConsoleSearchGroupOut: {
             /** Key */
@@ -17928,6 +22127,68 @@ export interface components {
             reports_open: number;
             /** Payout Requests */
             payout_requests: number;
+        };
+        /** ConsoleSeatSwapOut */
+        ConsoleSeatSwapOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
+            /** Org Name */
+            org_name: string;
+            /** Program Title */
+            program_title: string;
+            /** Module Title */
+            module_title: string | null;
+            /** Mode */
+            mode: string;
+            /** Cohort Name */
+            cohort_name: string | null;
+            /** From Name */
+            from_name: string;
+            /** From Email */
+            from_email: string;
+            /** From Progress Pct */
+            from_progress_pct: number;
+            /** To Name */
+            to_name: string;
+            /** To Email */
+            to_email: string;
+            /** Reason */
+            reason: string;
+            /** After Cutoff */
+            after_cutoff: boolean;
+            /** Requested By Name */
+            requested_by_name: string;
+            /** Company By Name */
+            company_by_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decision Note */
+            decision_note: string;
+        };
+        /** ConsoleSeatSwapsOut */
+        ConsoleSeatSwapsOut: {
+            /** Items */
+            items: components["schemas"]["ConsoleSeatSwapOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** ConsoleSeatSwapDecideIn */
+        ConsoleSeatSwapDecideIn: {
+            /** Approve */
+            approve: boolean;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** ConsoleSubsByPlanOut */
         ConsoleSubsByPlanOut: {
@@ -20043,6 +24304,192 @@ export interface operations {
             };
         };
     };
+    apps_learning_api_my_record: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnerRecordOut"];
+                };
+            };
+        };
+    };
+    apps_learning_api_my_otj: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnerOtjPageOut"];
+                };
+            };
+        };
+    };
+    apps_learning_api_log_otj: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LearnerOtjLogIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnerIdOut"];
+                };
+            };
+        };
+    };
+    apps_learning_api_withdraw_otj: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_learning_api_my_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnerSessionsOut"];
+                };
+            };
+        };
+    };
+    apps_learning_api_my_workshops: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnerWorkshopsOut"];
+                };
+            };
+        };
+    };
+    apps_learning_api_book_workshop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+                workshop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_learning_api_cancel_workshop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+                workshop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
     apps_compliance_api_dashboard: {
         parameters: {
             query?: never;
@@ -20610,6 +25057,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckoutOut"];
+                };
+            };
+        };
+    };
+    apps_commerce_api_program_checkout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramCheckoutIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutOut"];
+                };
+            };
+        };
+    };
+    apps_commerce_api_program_unlock_module: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramUnlockIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramUnlockOut"];
                 };
             };
         };
@@ -22580,6 +27075,814 @@ export interface operations {
             };
         };
     };
+    apps_corporate_program_seats_api_signup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeatSignupIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatSignupOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_setup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatSetupOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_catalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatCatalogueOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_save_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeatDraftIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatSetupOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_checkout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatCheckoutOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_orders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatOrdersOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_holders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                line_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatHoldersOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_allocate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeatAllocateIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatHolderOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatOkOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_request_swap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeatSwapIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatSwapOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_swaps: {
+        parameters: {
+            query?: {
+                open?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatSwapsOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_company_decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                swap_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeatDecideIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatOkOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_cancel_swap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                swap_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatOkOut"];
+                };
+            };
+        };
+    };
+    apps_corporate_program_seats_api_team: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeatTeamOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrOverviewOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_disconnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_connect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrConnectIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrConnectionOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_validate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrConnectionOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_replace_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrKeyIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrConnectionOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_set_features: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrFeaturesIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrConnectionOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_pause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrPauseIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrConnectionOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_sync_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrRunOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_runs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrRunOut"][];
+                };
+            };
+        };
+    };
+    apps_integrations_api_run_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrRunOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_people: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                q?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrPersonPage"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_match: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrMatchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrInviteIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrInviteOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_ignore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_departments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrDepartmentOut"][];
+                };
+            };
+        };
+    };
+    apps_integrations_api_link_department: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dept_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrDepartmentLinkIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrDepartmentOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_training_titles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrTrainingTitleOut"][];
+                };
+            };
+        };
+    };
+    apps_integrations_api_map_training: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrTrainingMapIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrTrainingMapOut"];
+                };
+            };
+        };
+    };
+    apps_integrations_api_training_records: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrTrainingRecordOut"][];
+                };
+            };
+        };
+    };
+    apps_integrations_api_leave: {
+        parameters: {
+            query: {
+                member_ids: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrLeaveOut"][];
+                };
+            };
+        };
+    };
+    apps_integrations_api_member_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrMemberLinkOut"];
+                };
+            };
+        };
+    };
     apps_catalog_studio_apply_as_instructor: {
         parameters: {
             query?: never;
@@ -22625,6 +27928,30 @@ export interface operations {
         };
     };
     apps_catalog_studio_create_course: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioCourseCreateOut"];
+                };
+            };
+        };
+    };
+    apps_catalog_studio_create_program: {
         parameters: {
             query?: never;
             header?: never;
@@ -22812,6 +28139,158 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StudioSectionCreateOut"];
+                };
+            };
+        };
+    };
+    apps_catalog_studio_add_module: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModuleIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioModuleCreateOut"];
+                };
+            };
+        };
+    };
+    apps_catalog_studio_order_modules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_catalog_studio_delete_module: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_catalog_studio_update_module: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModulePatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_catalog_studio_order_weeks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
+                };
+            };
+        };
+    };
+    apps_catalog_studio_move_week: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeekMoveIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkOut"];
                 };
             };
         };
@@ -29264,6 +34743,1213 @@ export interface operations {
             };
         };
     };
+    apps_platform_console_program_live_meetings_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleMeetingsStatusOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_group_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveSessionListOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_plan_group_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLivePlanOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_update_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleLiveSessionPatchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_session_teams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_session_attendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveAttendanceOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_mark_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleLiveAttendanceIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveMarkedOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_sync_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveMarkedOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_session_recording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleLiveUploadIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveUploadOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_workshops: {
+        parameters: {
+            query?: {
+                program_id?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleWorkshopListOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_create_workshop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleWorkshopIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_update_workshop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workshop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleWorkshopPatchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_workshop_teams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workshop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_workshop_attendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workshop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveAttendanceOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_mark_workshop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workshop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleLiveAttendanceIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveMarkedOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_sync_workshop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workshop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveMarkedOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_workshop_recording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workshop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleLiveUploadIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLiveUploadOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_live_my_teaching: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleTeachingGroupOut"][];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_programs: {
+        parameters: {
+            query?: {
+                q?: string;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleProgramListOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_program: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleProgramDetailOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_create_cohort: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleProgramCohortIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_cohort: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleCohortDetailOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_update_cohort: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleCohortPatchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_set_module_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+                module_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleModuleStartIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_create_group: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleGroupIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_delete_group: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_update_group: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleGroupIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_group_members: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleGroupMembersOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_add_members: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleGroupAddIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleGroupAddOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_remove_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+                enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_tutors: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleProgramTutorOut"][];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_closures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleCohortClosureOut"][];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_add_closure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleClosureIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_delete_closure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                closure_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_programs_sync_holidays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleHolidaySyncOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_offers_offers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleProgramOffersOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_offers_create_offer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleProgramOfferIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_offers_update_offer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleProgramOfferPatchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_program_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleProgramSettingsOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_save_program_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleProgramSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleProgramSettingsOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_ksb_standards: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleKsbStandardOut"][];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_create_custom_standard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleKsbCustomIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_ksb_standard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                standard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleKsbStandardDetailOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_fetch_standard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleKsbFetchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleKsbSavedOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_upload_standard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleKsbUploadIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleKsbSavedOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_add_custom_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                standard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleKsbItemIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_ksb_map: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleKsbMapOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_set_ksb_map: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+                lecture_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleKsbMapIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_otj_pending: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOtjPendingPageOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_decide_otj: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleOtjDecideIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_program_records_learner_record: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleLearnerRecordOut"];
+                };
+            };
+        };
+    };
     apps_platform_console_promotions_promotions_overview: {
         parameters: {
             query?: never;
@@ -29544,6 +36230,169 @@ export interface operations {
             };
         };
     };
+    apps_platform_console_roles_roles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleStaffRolesOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_roles_create_role: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleStaffRoleIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_roles_delete_role: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_roles_update_role: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleStaffRoleIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_roles_role_members: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleStaffRoleMemberOut"][];
+                };
+            };
+        };
+    };
+    apps_platform_console_roles_add_role_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleStaffRoleMemberIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_roles_remove_role_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                role_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
     apps_platform_console_search_search: {
         parameters: {
             query?: {
@@ -29583,6 +36432,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConsoleNavCountsOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_seat_swaps_seat_swaps: {
+        parameters: {
+            query?: {
+                waiting?: boolean;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleSeatSwapsOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_seat_swaps_decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                swap_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleSeatSwapDecideIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
                 };
             };
         };

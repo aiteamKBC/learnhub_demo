@@ -874,3 +874,9 @@ def delete_attachment(request, attachment_id: str):
 
     files.delete(request, _attachment(scope, attachment_id), is_staff=False)
     return {"ok": True}
+
+
+# M22: program seats (company signup, orders, allocation, swaps, team view)
+from .program_seats_api import router as _program_seats  # noqa: E402
+
+router.add_router("/program-seats", _program_seats)

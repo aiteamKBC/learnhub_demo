@@ -132,9 +132,8 @@ def create_subscription_checkout(
         customer_email=customer_email or user.email,
         success_url=success_url,
         cancel_url=cancel_url,
-        subscription_data={
-            "trial_period_days": plan.trial_days if plan.trial_days > 0 else None,
-        },
+        idempotency_key=f"b2c-sub-{sub.id}",
+        trial_days=plan.trial_days,  # the gateway turns this into subscription_data
     )
 
     Subscription.objects.filter(pk=sub.pk).update(

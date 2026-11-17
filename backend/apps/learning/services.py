@@ -7,7 +7,7 @@ enrolment needs that company's context; a personal one needs only the user.
 from datetime import timedelta
 from decimal import Decimal
 
-from django.db import connection, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Max
 from django.utils import timezone
 
@@ -45,15 +45,23 @@ def enrol(*, user, course, source: str, org_id=None, source_ref=None, access_exp
         )
     ):  # staff set a limited access period on this course (console > Courses)
         access_expires_at = timezone.now() + timedelta(days=course.access_days)
-    return Enrollment.objects.create(
-        user=user,
-        org_id=org_id,
-        course=course,
-        source=source,
-        source_ref=source_ref,
-        enrolled_at=timezone.now(),
-        access_expires_at=access_expires_at,
-    )
+    try:
+        with transaction.atomic():  # savepoint: a double click or webhook + API at once hit the unique index
+            return Enrollment.objects.create(
+                user=user,
+                org_id=org_id,
+                course=course,
+                source=source,
+                source_ref=source_ref,
+                enrolled_at=timezone.now(),
+                access_expires_at=access_expires_at,
+            )
+    except IntegrityError:
+        return (
+            Enrollment.objects.filter(user=user, course=course, org_id=org_id)
+            .exclude(status=Enrollment.Status.SUPERSEDED)
+            .get()
+        )
 
 
 def _live_lecture(enrollment: Enrollment, lecture_key) -> Lecture:
@@ -101,6 +109,9 @@ def refresh_course_progress(enrollment: Enrollment) -> None:
     )
     Enrollment.objects.filter(pk=enrollment.pk).update(progress_pct=pct, updated_at=timezone.now())
     enrollment.progress_pct = pct
+    from .records import sync_after_progress  # programs: auto OTJ hours, module certificates
+
+    sync_after_progress(enrollment)
     if required and done == required and enrollment.status == Enrollment.Status.ACTIVE:
         complete_course(enrollment)
 
@@ -133,6 +144,12 @@ def _tell(user_id, code: str, context: dict, *, url: str, dedupe: str) -> None:
     notify.notify([user_id], code, context, url=url, dedupe=dedupe)
 
 
+def _program_cpd(enrollment: Enrollment):
+    from .records import program_cpd_hours
+
+    return program_cpd_hours(enrollment)
+
+
 def issue_certificate(enrollment: Enrollment) -> Certificate:
     existing = Certificate.objects.filter(enrollment=enrollment).first()
     if existing:
@@ -153,7 +170,7 @@ def issue_certificate(enrollment: Enrollment) -> Certificate:
         recipient_name=user.full_name or user.email.split("@")[0],
         course_title=course.title,
         instructor_names=", ".join(names)[:400],
-        cpd_hours=course.cpd_hours,
+        cpd_hours=_program_cpd(enrollment) if course.kind == "program" else course.cpd_hours,
         issued_at=timezone.now(),
     )
 
@@ -162,12 +179,13 @@ def verify_certificate(code: str) -> dict | None:
     """Public check (screen 23): returns only the safe fields, via a SECURITY DEFINER
     function (the M5 one adds the expiry date)."""
     with connection.cursor() as cur:
-        cur.execute("SELECT * FROM learning.verify_certificate_v2(%s)", [code])
-        row = cur.fetchone()
-        if row is None:
-            return None
-        cols = [c.name for c in cur.description]
-        return dict(zip(cols, row, strict=True))
+        for fn in ("verify_certificate_v2", "verify_module_certificate"):  # course, then program module
+            cur.execute(f"SELECT * FROM learning.{fn}(%s)", [code])  # noqa: S608 - fixed names
+            row = cur.fetchone()
+            if row is not None:
+                cols = [c.name for c in cur.description]
+                return dict(zip(cols, row, strict=True))
+    return None
 
 
 # ---------------------------------------------------------------- certificates (console)

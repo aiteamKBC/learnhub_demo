@@ -28,8 +28,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 export function RequireManager({ children }: { children: ReactNode }) {
   const { data: me } = useMe()
   const { org, memberships, switchTo, canManage } = useWorkspace()
+  // a company that signed itself up opens its workspace once its first order is paid (M22)
+  if (org && org.onboarding_state !== 'active') return <Navigate to="/business/start" replace />
   if (canManage) return children
-  const managed = memberships.find((m) => ['owner', 'admin', 'manager'].includes(m.role))
+  const managed = memberships.find((m) => ['owner', 'admin', 'manager'].includes(m.role) && m.onboarding_state === 'active')
+  if (!managed && memberships.some((m) => m.onboarding_state !== 'active')) return <Navigate to="/business/start" replace />
   if (managed && !org) {
     switchTo(managed.org_id)
     return <PageSpinner />

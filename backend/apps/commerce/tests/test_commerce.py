@@ -11,6 +11,7 @@ from django.test import override_settings
 from django.utils import timezone
 
 from apps.catalog import services as cat
+from apps.catalog.models import Lecture
 from apps.commerce import pricing, services, webhooks
 from apps.commerce.models import (
     CartItem,
@@ -62,9 +63,11 @@ class CommerceBase(SchemaTransactionTestCase):
     def course(self, slug, tier=None, free=False):
         c = cat.create_course(title=f"Course {slug}", slug=slug, ownership="platform", created_by=self.staff)
         sec = cat.add_section(version=c.versions.get(), title="Basics")
-        cat.add_lecture(section=sec, kind="article", title="Read", body="<p>x</p>")
+        lec = cat.add_lecture(section=sec, kind="article", title="Read", body="<p>x</p>")
+        CoursePrice.objects.create(course=c, tier=tier, is_free=free)  # the checklist needs it first
+        if not free:
+            Lecture.objects.filter(pk=lec.pk).update(token_price=10)
         cat.submit(version=c.versions.get(), by=self.staff)
-        CoursePrice.objects.create(course=c, tier=tier, is_free=free)
         c.refresh_from_db()
         return c
 

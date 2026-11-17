@@ -101,7 +101,7 @@ def ask(*, user, course_id, title: str, body: str, lecture_key=None) -> Question
         CourseInstructor.objects.filter(course=course).exclude(user=user).values_list("user_id", flat=True)
     )
     notify.notify(instructors, "question_posted", {"course": course.title, "title": q.title},
-                  url=f"/studio/courses/{course.id}/qa/{q.id}", dedupe=f"question:{q.id}")  # fmt: skip
+                  url="/studio/questions", dedupe=f"question:{q.id}")  # fmt: skip
     return q
 
 

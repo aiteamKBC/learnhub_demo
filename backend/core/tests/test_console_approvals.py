@@ -34,6 +34,10 @@ class ApprovalsTest(SchemaTransactionTestCase):
         self.post(
             f"/studio/sections/{sec}/lectures", {"kind": "article", "title": "Hello", "body": "<p>Hi</p>"}
         )
+        # the publish checklist needs a price (or "free") before submission
+        self.client.put(
+            API + f"/studio/courses/{c['id']}/price", data={"free": True}, content_type="application/json"
+        )
         self.assertEqual(self.post(f"/studio/versions/{v}/submit").json()["status"], "in_review")
         return c["id"], v
 
@@ -72,7 +76,7 @@ class ApprovalsTest(SchemaTransactionTestCase):
         self.assertEqual([h["number"] for h in d["history"]], [2, 1])  # every version, newest first
         self.assertEqual(d["instructors"][0]["name"], "Tom Teacher")
         self.assertEqual(d["includes"]["quizzes"], 1)
-        self.assertTrue(any(q["label"] == "Price is set" and q["ok"] for q in d["quick_checks"]))
+        self.assertTrue(any(q["label"] == "Cash/free price is set" and q["ok"] for q in d["quick_checks"]))
         self.assertIsNotNone(d["preview_lecture_id"])
         play = self.get(f"/console/review/lectures/{d['preview_lecture_id']}/play")
         self.assertEqual(play.status_code, 200)

@@ -228,7 +228,7 @@ def fulfil_package(*, session_id: str, user_id: UUID, package_id: UUID, course_i
     from .unlock import enrol_on_course_access
 
     live = Course.objects.filter(
-        pk__in=granted, owner_org__isnull=True, live_version__isnull=False
+        pk__in=granted, owner_org__isnull=True, live_version__isnull=False, kind__in=Course.SELLABLE_KINDS
     ).values_list("id", flat=True)
     for cid in live:
         enrol_on_course_access(user=user, course_id=cid)

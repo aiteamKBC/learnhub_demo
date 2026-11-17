@@ -1,11 +1,16 @@
 """B2C-07 tests: unlimited personal subscription — resolver, plan query, exclusion."""
 
 import uuid
+from unittest import mock
 
 from django.utils import timezone
 
 from apps.commerce.models import Plan, PlanPrice, Subscription
-from apps.commerce.subscriptions import get_active_subscription, list_unlimited_plans
+from apps.commerce.subscriptions import (
+    create_subscription_checkout,
+    get_active_subscription,
+    list_unlimited_plans,
+)
 from apps.identity.models import User
 from apps.platform.access import resolve
 from core.tenancy import tenant_context
@@ -175,3 +180,19 @@ class UnlimitedSubscriptionTest(SchemaTransactionTestCase):
             d = resolve(self.user, "course", self.course.id)
         self.assertTrue(d.allowed)
         self.assertEqual(d.reason_code, "subscription")
+
+    def test_checkout_calls_the_gateway_with_its_real_signature(self):
+        # autospec: a keyword the real gateway doesn't take (it once got subscription_data) fails here
+        with mock.patch("apps.commerce.gateway.create_checkout_session", autospec=True) as create:
+            create.return_value = {"id": "cs_test_1", "url": "https://checkout.stripe.test/1"}
+            with tenant_context(user_id=str(self.user.id), staff=True):
+                create_subscription_checkout(
+                    user=self.user, plan_id=self.plan.id, currency_code="GBP",
+                    success_url="https://x.test/ok", cancel_url="https://x.test/no",
+                )  # fmt: skip
+        kw = create.call_args.kwargs
+        self.assertEqual((kw["mode"], kw["trial_days"]), ("subscription", 7))
+        with tenant_context(staff=True):
+            sub = Subscription.objects.get(user=self.user)
+        self.assertEqual(kw["idempotency_key"], f"b2c-sub-{sub.id}")
+        self.assertEqual(sub.stripe_session_id, "cs_test_1")

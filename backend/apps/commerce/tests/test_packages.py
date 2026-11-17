@@ -117,6 +117,21 @@ class CashPackageFulfilTest(SchemaTransactionTestCase):
         self.assertTrue(d2.allowed)
         self.assertEqual(d1.reason_code, "cash_package")
 
+    def test_fulfil_enrols_and_keeps_the_package_reason(self):
+        from apps.learning.models import Enrollment
+
+        session = self._session()
+        with tenant_context(staff=True):
+            webhooks._fulfil_cash_package(session, session["metadata"])
+            webhooks._fulfil_cash_package(session, session["metadata"])  # replayed webhook
+        with tenant_context(user_id=str(self.user.id), staff=True):
+            enrolled = Enrollment.objects.filter(user=self.user, org__isnull=True, status="active")
+            self.assertEqual(
+                sorted(enrolled.values_list("course_id", flat=True)),
+                sorted([self.course1.id, self.course2.id]),
+            )
+            self.assertEqual(resolve(self.user, "course", self.course1.id).reason_code, "cash_package")
+
     def test_fulfil_idempotent(self):
         session = self._session(session_id="cs_test_pkg_idem")
         with tenant_context(staff=True):

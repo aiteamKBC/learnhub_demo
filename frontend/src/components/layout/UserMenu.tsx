@@ -69,9 +69,16 @@ export function UserMenu({ onDark }: { onDark?: boolean }) {
         </MenuItem>
         {manages.map((m) => (
           <MenuItem key={m.org_id} onSelect={() => (switchTo(m.org_id), navigate('/business'))}>
-            <LayoutDashboard /> <span className="truncate">{m.name} dashboard</span>
+            <LayoutDashboard /> <span className="truncate">{m.onboarding_state === 'active' ? `${m.name} dashboard` : `Finish setting up ${m.name}`}</span>
           </MenuItem>
         ))}
+        {manages.some((m) => m.onboarding_state !== 'active') ? null : (
+          <MenuItem asChild>
+            <Link to="/business/start">
+              <Building2 /> Train your team
+            </Link>
+          </MenuItem>
+        )}
         {me.is_instructor ? (
           <MenuItem asChild>
             <Link to="/studio">

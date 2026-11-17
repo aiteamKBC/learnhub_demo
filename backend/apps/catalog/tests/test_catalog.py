@@ -8,6 +8,7 @@ from django.db import IntegrityError, ProgrammingError, transaction
 
 from apps.catalog import selectors, services
 from apps.catalog.models import Course, CourseVersion, Lecture, MediaAsset, QuizOption, VideoLibrary
+from apps.commerce.models import CoursePrice
 from apps.identity.models import User
 from apps.org import services as org_services
 from core.errors import ServiceError
@@ -155,6 +156,8 @@ class VersioningTest(CatalogTestBase):
     def test_marketplace_update_needs_review(self):
         with tenant_context(user_id=self.teacher.id):
             course, v1 = self.full_course(ownership="instructor", user=self.teacher, slug="mkt")
+            with tenant_context(user_id=self.staff.id, staff=True):  # the checklist needs a price
+                CoursePrice.objects.create(course=course, is_free=True)
             services.submit(version=v1, by=self.teacher)
             v1.refresh_from_db()
             course.refresh_from_db()
@@ -182,7 +185,8 @@ class VersioningTest(CatalogTestBase):
                 quiz=q, kind="single_choice", prompt="?", options=[{"body": "a"}, {"body": "b"}]
             )
             problems = services.publish_checklist(v1)
-            self.assertEqual(len(problems), 2, problems)
+            self.assertEqual(len(problems), 3, problems)  # video, quiz, and no price yet
+            self.assertIn("Set a course price, or make the course free.", problems)
             with self.assertRaises(ServiceError):
                 services.submit(version=v1, by=self.teacher)
 

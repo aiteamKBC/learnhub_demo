@@ -66,6 +66,9 @@ async function waitForCondition(page, fn, { tries = 10, delayMs = 1000 } = {}) {
     p.on('pageerror', (e) => problems.push('pageerror: ' + e.message))
     p.on('console', (m) => m.type() === 'error' && !/status of (401|404)/.test(m.text()) && problems.push('console: ' + m.text()))
     p.on('response', (r) => r.url().includes('/api/') && r.status() >= 500 && problems.push(`HTTP ${r.status()} ${r.url()}`))
+    // a failure screenshot should show whichever page/tab the script was using when it
+    // threw, not always the first one opened
+    global.__m3debug = p
     return p
   }
   const step = (s) => console.log('✓', s)
@@ -79,7 +82,7 @@ async function waitForCondition(page, fn, { tries = 10, delayMs = 1000 } = {}) {
   const login = async (p, email) => {
     await p.goto(BASE + '/login')
     await p.getByLabel('Email').fill(email)
-    await p.getByLabel('Password').fill(NEW_USER_PASSWORD)
+    await p.getByLabel('Password', { exact: true }).fill(NEW_USER_PASSWORD)
     await p.getByRole('button', { name: 'Log in' }).click()
     await p.waitForURL(/\/learn$/)
   }
@@ -226,25 +229,34 @@ async function waitForCondition(page, fn, { tries = 10, delayMs = 1000 } = {}) {
   await ip.getByRole('link', { name: 'Create an account' }).click()
   await ip.waitForURL(/\/signup/)
   await ip.getByLabel('Email').fill(inviteEmail)
-  await ip.getByLabel('Password').fill(NEW_USER_PASSWORD)
+  await ip.getByLabel('Password', { exact: true }).fill(NEW_USER_PASSWORD)
+  await ip.getByLabel('Confirm password').fill(NEW_USER_PASSWORD)
   await ip.getByRole('button', { name: 'Create account' }).click()
   await ip.getByText('We sent a confirmation link to').waitFor()
   step('signed up as the invited address through the real signup page')
 
   const verifyKey = py('e2e_verify_key.py', inviteEmail)
   await ip.goto(`${BASE}/account/verify-email/${verifyKey}`)
+  await ip.getByRole('button', { name: 'Confirm email address' }).click()
   await ip.getByText('Your email is confirmed.').waitFor()
   // the invite page remembered itself in localStorage when "Create an account" was clicked
   await ip.getByRole('link', { name: 'Continue to your invitation' }).click()
   await ip.waitForURL(new RegExp(`/invite/${token}`))
   step('verified the email through the real confirmation screen, back at the invitation')
 
-  await ip.getByText(`Signed in as ${inviteEmail}`).waitFor()
-  await ip.getByRole('button', { name: 'Accept and join' }).click()
+  // signing in auto-accepts the invitation now (no separate "Accept and join" button)
   await toast(ip, `Welcome to ${org.org_name}`)
   await ip.waitForURL(/\/learn$/)
+  // joining the company reassigns required training through a background job
+  // (apps/org/signals.py structure_changed -> compliance's refresh_org_task); the page's
+  // query fires once on mount, so poll by reloading rather than relying on one fetch
   await ip.goto(BASE + '/learn/required')
-  await ip.getByText('Fire Safety', { exact: true }).waitFor()
+  const fireSafety = ip.getByText('Fire Safety', { exact: true })
+  for (let i = 0; i < 10 && !(await fireSafety.count()); i++) {
+    await ip.waitForTimeout(1000)
+    await ip.reload({ waitUntil: 'networkidle' })
+  }
+  await fireSafety.waitFor()
   await shot(ip, 'm3-06-required-training')
   step('accepted the invite; required training (company-wide "Fire Safety") shows for the new learner')
 

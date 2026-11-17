@@ -8,8 +8,11 @@ import { Card } from '@/components/ui/card'
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog'
 import { Field, Textarea } from '@/components/ui/input'
 import { EmptyState, ErrorState } from '@/components/ui/misc'
+import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useOrders, useRefund } from '@/features/commerce/api'
+import { useBillingPortal, useOrders, useRefund } from '@/features/commerce/api'
+
+type Order = NonNullable<ReturnType<typeof useOrders>['data']>['pages'][number]['items'][number]
 import { money, shortDate } from '@/lib/format'
 import { Link } from '@/lib/router'
 
@@ -17,6 +20,38 @@ const STATUS: Record<string, { label: string; tone: 'success' | 'warning' | 'neu
   paid: { label: 'Paid', tone: 'success' },
   partially_refunded: { label: 'Partly refunded', tone: 'warning' },
   refunded: { label: 'Refunded', tone: 'neutral' },
+}
+
+const PLAN_STATUS: Record<string, string> = {
+  pending: 'Waiting for the first payment',
+  active: 'Paying monthly',
+  past_due: 'Payment overdue',
+  completed: 'Paid in full',
+  cancelled: 'Payments stopped',
+}
+
+/** A program paid monthly (M21): how far along, and a warning while a payment is overdue. */
+function Instalments({ plan, currency, exponent }: { plan: NonNullable<Order['instalments']>; currency: string; exponent: number }) {
+  const portal = useBillingPortal()
+  return (
+    <div className="grid gap-2 border-t border-border px-5 py-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium">
+          {plan.paid_count} of {plan.count} monthly payments of {money(plan.amount_minor, currency, exponent)}
+        </span>
+        <Badge tone={plan.status === 'past_due' ? 'danger' : plan.status === 'completed' ? 'success' : 'neutral'}>{PLAN_STATUS[plan.status] ?? plan.status}</Badge>
+      </div>
+      <Progress value={(plan.paid_count / plan.count) * 100} label="Monthly payments made" />
+      {plan.status === 'past_due' ? (
+        <p className="text-[13px] text-danger">
+          Your last payment didn't go through.{plan.grace_until ? ` Update your card by ${shortDate(plan.grace_until)} to keep your access.` : ''}{' '}
+          <Button variant="link" size="sm" className="h-auto text-[13px] text-danger" loading={portal.isPending} onClick={() => portal.mutate(undefined, { onSuccess: (r) => window.location.assign(r.url), onError: (e) => toast.error((e as Error).message) })}>
+            Update your card
+          </Button>
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 export function OrdersPage() {
@@ -63,9 +98,12 @@ export function OrdersPage() {
                   <ul className="divide-y divide-border">
                     {o.items.map((i) => (
                       <li key={i.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
-                        <Link to={`/learn`} className="flex-1 font-medium hover:text-primary">
-                          {i.course_title}
-                        </Link>
+                        <span className="min-w-0 flex-1">
+                          <Link to={`/learn`} className="font-medium break-words hover:text-primary">
+                            {i.course_title}
+                          </Link>
+                          {i.offer_label ? <span className="block text-xs text-muted">{i.offer_label}</span> : null}
+                        </span>
                         <span className="text-muted tabular">{money(i.gross_minor, o.currency, o.exponent)}</span>
                         {i.refunded_at ? (
                           <Badge>Refunded {shortDate(i.refunded_at)}</Badge>
@@ -77,6 +115,7 @@ export function OrdersPage() {
                       </li>
                     ))}
                   </ul>
+                  {o.instalments ? <Instalments plan={o.instalments} currency={o.currency} exponent={o.exponent} /> : null}
                 </Card>
               </li>
             )

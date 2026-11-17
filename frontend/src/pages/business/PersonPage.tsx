@@ -17,6 +17,8 @@ import { usePersonCompliance } from '@/features/compliance/api'
 import { PersonRequirements } from '@/features/compliance/PersonRequirements'
 import { useMe } from '@/features/identity/auth'
 import { useWorkspace } from '@/features/identity/workspace'
+import { useHrMemberLink } from '@/features/integrations/api'
+import { HrLinkBadges } from '@/features/integrations/ui'
 import { type MemberPatch, ROLE_LABEL, useAssignableRoles, useIsOrgAdmin, useJobRoles, useRemovePerson, useUnits, useUpdatePerson } from '@/features/org/api'
 import { CheckList, RoleBadge, SavedTick, UnitPicker } from '@/features/org/ui'
 import { shortDate } from '@/lib/format'
@@ -262,6 +264,7 @@ export function PersonPage() {
   const { org } = useWorkspace()
   const admin = useIsOrgAdmin()
   const { data: person, isLoading, error, refetch } = usePersonCompliance(memberId)
+  const { data: hrLink } = useHrMemberLink(memberId)
   const focus = params.get('requirement') ?? undefined
   const tab = params.get('tab') ?? (focus ? 'training' : 'profile')
   const { data: me } = useMe()
@@ -314,6 +317,7 @@ export function PersonPage() {
               <span className="flex flex-wrap items-center gap-2">
                 <span className="truncate">{person.name || person.email}</span>
                 <RoleBadge role={person.role} />
+                <HrLinkBadges link={hrLink} />
               </span>
               <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-normal tracking-normal text-muted">
                 <span className="inline-flex min-w-0 items-center gap-1.5">

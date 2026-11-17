@@ -1,5 +1,4 @@
-import { useQueries } from '@tanstack/react-query'
-import { ArrowRight, Award, BookOpen, Building2, CalendarClock, CheckCircle2, Download, PlayCircle } from 'lucide-react'
+import { ArrowRight, Award, BookOpen, Building2, CalendarClock, CalendarDays, CheckCircle2, ClipboardList, Download, PlayCircle, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -9,12 +8,13 @@ import { CourseThumb } from '@/components/ui/course-thumb'
 import { EmptyState, ErrorState } from '@/components/ui/misc'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { api, unwrap } from '@/api/client'
 import { CountUp } from '@/components/ui/count-up'
+import { useMyRequirementsAll } from '@/features/compliance/api'
 import { useMe } from '@/features/identity/auth'
 import { certificatePdfUrl, useMyCertificates, useMyCourses } from '@/features/learning/api'
 import { relativeDate, shortDate } from '@/lib/format'
 import { Link } from '@/lib/router'
+import { dayRange } from '@/lib/schedule'
 
 function greeting() {
   const h = new Date().getHours()
@@ -38,14 +38,10 @@ function PanelHead({ icon, title, to, label }: { icon: ReactNode; title: string;
 function UpcomingDeadlines() {
   const { data: me } = useMe()
   const orgs = me?.memberships ?? []
-  const results = useQueries({
-    queries: orgs.map((m) => ({
-      queryKey: ['my-requirements', m.org_id],
-      queryFn: () => unwrap(api.GET('/api/v1/compliance/my', { headers: { 'X-Org-Id': m.org_id } })),
-    })),
-  })
+  const results = useMyRequirementsAll(orgs.map((m) => m.org_id))
   if (!orgs.length) return null
   const loading = results.some((r) => r.isLoading)
+  const failed = results.filter((r) => r.isError)
   const due = results
     .flatMap((r) => r.data ?? [])
     .filter((r) => r.due_at && !['compliant', 'exempt'].includes(r.status))
@@ -54,7 +50,12 @@ function UpcomingDeadlines() {
   return (
     <Card className="overflow-hidden">
       <PanelHead icon={<CalendarClock />} title="Upcoming deadlines" to="/learn/required" label="View all required training" />
-      {loading ? (
+      {failed.length ? (
+        // never say "up to date" when we couldn't check
+        <div className="p-4">
+          <ErrorState message="We couldn't load your deadlines." onRetry={() => failed.forEach((r) => void r.refetch())} />
+        </div>
+      ) : loading ? (
         <div className="grid gap-2 p-4">
           <Skeleton className="h-12 rounded-md" />
           <Skeleton className="h-12 rounded-md" />
@@ -86,12 +87,16 @@ function UpcomingDeadlines() {
 }
 
 function RecentCertificates() {
-  const { data, isLoading } = useMyCertificates()
+  const { data, isLoading, error, refetch } = useMyCertificates()
   const certs = (data ?? []).slice(0, 2)
   return (
     <Card className="overflow-hidden">
       <PanelHead icon={<Award />} title="My certificates" to="/learn/certificates" label="View all certificates" />
-      {isLoading ? (
+      {error ? (
+        <div className="p-4">
+          <ErrorState message="We couldn't load your certificates." onRetry={() => void refetch()} />
+        </div>
+      ) : isLoading ? (
         <div className="p-4">
           <Skeleton className="h-12 rounded-md" />
         </div>
@@ -118,19 +123,20 @@ function RecentCertificates() {
   )
 }
 
-function Stats({ enrolled, completed }: { enrolled: number; completed: number }) {
+function Stats({ enrolled, completed, more }: { enrolled: number; completed: number; more: boolean }) {
   const { data: certs } = useMyCertificates()
-  const stats: [string, number][] = [
-    ['Courses', enrolled],
-    ['Completed', completed],
-    ['Certificates', certs?.length ?? 0],
+  const stats: [string, number, boolean][] = [
+    ['Courses', enrolled, more],
+    ['Completed', completed, more],
+    ['Certificates', certs?.length ?? 0, false],
   ]
   return (
     <Card className="grid grid-cols-3 divide-x divide-border py-4 text-center">
-      {stats.map(([label, n]) => (
+      {stats.map(([label, n, plus]) => (
         <div key={label} className="px-2">
           <p className="text-2xl font-semibold tracking-tight tabular">
             <CountUp value={n} />
+            {plus ? '+' : ''}
           </p>
           <p className="mt-0.5 text-xs text-muted">{label}</p>
         </div>
@@ -192,7 +198,8 @@ export function MyLearningPage() {
           <h2 className="mt-10 mb-4 text-lg font-semibold tracking-tight">My courses</h2>
           <div className="stagger grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
             {items.map((c) => (
-              <Link key={c.enrollment_id} to={`/learn/${c.slug}`} className="group rounded-lg border border-border bg-surface p-2.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow">
+              <div key={c.enrollment_id} className="grid content-start gap-1.5">
+              <Link to={`/learn/${c.slug}`} className="group rounded-lg border border-border bg-surface p-2.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow">
                 <CourseThumb src={c.thumbnail_url} title={c.title} />
                 <div className="px-1 pt-3 pb-1">
                   <h3 className="line-clamp-2 text-[15px] font-semibold group-hover:text-primary">{c.title}</h3>
@@ -203,17 +210,34 @@ export function MyLearningPage() {
                   ) : (
                     <p className="mt-1 text-xs text-muted">{c.instructors.join(', ')}</p>
                   )}
+                  {c.group_name ? (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted">
+                      <Users className="size-3.5 shrink-0" aria-hidden /> {c.group_name} · {c.cohort_name}
+                    </p>
+                  ) : null}
+                  {c.next_week ? (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted tabular">
+                      <CalendarDays className="size-3.5 shrink-0" aria-hidden /> Week {c.next_week.number}: {dayRange(c.next_week.starts_on, c.next_week.ends_on)}
+                    </p>
+                  ) : null}
                   <div className="mt-3 flex items-center gap-3">
                     <Progress value={c.progress_pct} tone={c.progress_pct >= 100 ? 'success' : 'primary'} label="Progress" />
                     <span className="text-xs text-muted tabular">{Math.round(c.progress_pct)}%</span>
                   </div>
                 </div>
               </Link>
+              {c.cohort_name ? (
+                // programs: hours, KSBs, CPD and module certificates (a sibling: links can't nest)
+                <Link to={`/learn/${c.slug}/record`} className="inline-flex items-center gap-1 justify-self-start px-1 text-xs font-medium text-primary hover:underline">
+                  <ClipboardList className="size-3.5" aria-hidden /> My record
+                </Link>
+              ) : null}
+              </div>
             ))}
           </div>
           </div>
           <aside className="grid content-start gap-4" aria-label="Your progress">
-            <Stats enrolled={items.length} completed={items.filter((i) => i.progress_pct >= 100).length} />
+            <Stats enrolled={items.length} completed={items.filter((i) => i.progress_pct >= 100).length} more={!!data?.next_cursor} />
             <UpcomingDeadlines />
             <RecentCertificates />
           </aside>

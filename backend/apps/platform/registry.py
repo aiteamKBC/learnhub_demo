@@ -8,6 +8,9 @@ in code. `public` settings may be sent to every browser (branding, switches).
 
 from dataclasses import dataclass, field
 
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+
 from core.errors import ServiceError
 
 
@@ -41,6 +44,8 @@ SETTINGS: tuple[Def, ...] = (
     Def("general.default_currency", "GBP", "str", "Default currency", "general", public=True, max_len=3),
     Def("general.time_zone", "Europe/London", "str", "Time zone", "general", public=True, max_len=64),
     Def("general.date_format", "d MMM yyyy", "choice", "Date format", "general", public=True, choices=DATE_FORMATS),
+    # where "Contact us", "Book a demo" and the privacy page send people; empty hides those links
+    Def("general.contact_email", "", "str", "Contact email", "general", public=True, max_len=254),
     # switches the backend enforces (staff always bypass)
     Def("access.registration_enabled", True, "bool", "Registration enabled", "access", public=True),
     Def("access.instructor_applications", True, "bool", "Instructor applications", "access", public=True),
@@ -53,6 +58,8 @@ SETTINGS: tuple[Def, ...] = (
     Def("payments.prices_include_tax", True, "bool", "Prices include VAT", "payment", public=True),
     Def("payments.allow_promotion_stacking", False, "bool", "Promotions can stack with coupons", "payment"),
     Def("payments.discount_reduces_commission", True, "bool", "Discounts reduce the instructor's share", "payment"),
+    Def("payments.instalment_grace_days", 7, "int",
+        "Days a program learner keeps access after a monthly payment fails", "payment", min=0, max=60),
     # learning (client question 18)
     Def("learning.course_review_required", True, "bool", "New courses need staff review", "learning"),
     Def("learning.certificates_enabled", True, "bool", "Issue certificates on completion", "learning", public=True),
@@ -60,6 +67,24 @@ SETTINGS: tuple[Def, ...] = (
         "learning", min=0, max=120),
     Def("learning.reviews_enabled", True, "bool", "Learners can review courses", "learning", public=True),
     Def("learning.qa_enabled", True, "bool", "Course Q&A", "learning", public=True),
+    # programs (M18): cohort calendars; client question 32
+    Def("learning.program_calendar", "england-and-wales", "choice", "Bank holidays for new cohorts", "learning",
+        choices=("england-and-wales", "scotland", "northern-ireland")),
+    Def("learning.program_min_working_days", 1, "int", "Working days a week needs to count as a teaching week",
+        "learning", min=1, max=5),
+    # M19: where "Fetch standard" looks up an apprenticeship standard by code ({code} is replaced).
+    # Only hosts in apps.catalog.ksb_import.ALLOWED_HOSTS are ever called.
+    Def("learning.ksb_feed_url", "https://skillsengland.education.gov.uk/api/apprenticeshipstandards/{code}", "str",
+        "Apprenticeship standards feed (use {code})", "learning", max_len=300),
+    # M20: live sessions and workshops
+    Def("learning.live_present_min", 3, "int", "Minutes in a live session that count as present", "learning",
+        min=1, max=120),
+    Def("learning.live_join_early_min", 15, "int", "Minutes before a live session the join link appears",
+        "learning", min=0, max=120),
+    Def("learning.teams_record_automatically", True, "bool", "Record program sessions and workshops in Teams automatically",
+        "learning"),
+    Def("learning.recording_pull_after_min", 30, "int", "Minutes after a Teams session ends before its recording is copied",
+        "learning", min=5, max=1440),
     # notifications
     Def("notifications.email_enabled", True, "bool", "Send email copies", "notification"),
     Def("notifications.digest", "off", "choice", "Digest for instructors", "notification",
@@ -119,4 +144,9 @@ def validate(key: str, value):
     uploaded = value.startswith(BRANDING_PATH) and "//" not in value  # our own upload (console)
     if d.key.endswith("_url") and value and not uploaded and not value.startswith("https://"):
         raise ServiceError("bad_value", f"{d.label}: use an https link.")
+    if d.key.endswith("_email") and value:
+        try:
+            validate_email(value)
+        except ValidationError:
+            raise ServiceError("bad_value", f"{d.label}: enter a valid email address.") from None
     return value

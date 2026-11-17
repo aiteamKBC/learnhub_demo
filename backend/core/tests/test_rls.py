@@ -11,6 +11,7 @@ DOMAIN_SCHEMAS = [
     "identity",
     "org",
     "catalog",
+    "delivery",
     "learning",
     "compliance",
     "commerce",
@@ -18,6 +19,7 @@ DOMAIN_SCHEMAS = [
     "engagement",
     "analytics",
     "platform",
+    "integrations",
 ]
 
 

@@ -11,6 +11,7 @@ const stripe = (kind, id) => run('e2e_stripe.py', kind, id)
   const b = await chromium.launch()
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } })
   const p = await ctx.newPage()
+  globalThis.__page = p // for the failure handler
   const problems = []
   p.on('pageerror', (e) => problems.push('pageerror: ' + e.message))
   p.on('console', (m) => m.type() === 'error' && !/status of 401/.test(m.text()) && problems.push('console: ' + m.text()))
@@ -22,7 +23,7 @@ const stripe = (kind, id) => run('e2e_stripe.py', kind, id)
   console.log('  new learner:', email)
   await p.goto(BASE + '/login')
   await p.getByLabel('Email').fill(email)
-  await p.getByLabel('Password').fill(NEW_USER_PASSWORD)
+  await p.getByLabel('Password', { exact: true }).fill(NEW_USER_PASSWORD)
   await p.getByRole('button', { name: 'Log in' }).click()
   await p.waitForURL(/\/learn$/)
   step('signed in')
@@ -117,14 +118,24 @@ const stripe = (kind, id) => run('e2e_stripe.py', kind, id)
     step('free course: enrolled without payment, opened in the player')
   } else step('no free courses in the seed (skipped)')
 
-  // personal plan trial
+  // personal plan trial: /plans -> /subscription (choose a plan) -> /checkout/review
+  // (phone + country, "Confirm & pay") -> straight back to /subscription?checkout=1 (the
+  // fake gateway's "hosted page" is the success URL itself, so there is no Stripe hop and
+  // no id in the URL) -> poll + webhook -> active.
   await p.goto(BASE + '/plans', { waitUntil: 'networkidle' })
   await shot('m1-07-plans')
-  await p.getByRole('button', { name: /Start free trial|Subscribe/ }).click()
-  await p.waitForURL(/checkout\/success\?subscription=/)
-  const subId = new URL(p.url()).searchParams.get('subscription')
+  await p.getByRole('button', { name: /Start free trial|Choose a plan/ }).click()
+  await p.waitForURL(/\/subscription$/)
+  await p.getByRole('button', { name: /Choose monthly|Choose yearly/ }).first().click()
+  await p.waitForURL(/\/checkout\/review$/)
+  await p.getByLabel('Phone number').fill('+44 7700 900123')
+  await p.getByLabel('Country').selectOption('GB')
+  await p.getByRole('button', { name: /Confirm & pay/ }).click()
+  await p.waitForURL(/\/subscription\?checkout=1/)
+  await p.getByText('Starting your subscription').waitFor()
+  const subId = lastLine(run('e2e_last_subscription.py', email))
   console.log('  webhook:', stripe('subscription', subId).replace(/\n/g, ' '))
-  await p.getByText(/free trial has started|Welcome to the Personal Plan/).waitFor({ timeout: 15000 })
+  await p.getByRole('button', { name: /Manage or cancel|Manage \/ resume/ }).waitFor({ timeout: 15000 })
   await p.goto(BASE + '/plans', { waitUntil: 'networkidle' })
   await p.getByText(/You're subscribed/).waitFor()
   step('personal plan trial started and shown on /plans')
@@ -165,7 +176,12 @@ const stripe = (kind, id) => run('e2e_stripe.py', kind, id)
   console.log(problems.length ? 'PROBLEMS:\n' + problems.join('\n') : 'no console errors, page errors or 5xx')
   await b.close()
   process.exit(problems.length ? 1 : 0)
-})().catch((e) => {
+})().catch(async (e) => {
   console.error('FAILED:', e.message.split('\n').slice(0, 6).join('\n'))
+  const pg = globalThis.__page
+  if (pg) {
+    console.error('  at URL:', pg.url())
+    await pg.screenshot({ path: `${OUT}/m1-FAILED.png` }).catch(() => {})
+  }
   process.exit(1)
 })

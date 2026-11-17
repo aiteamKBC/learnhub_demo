@@ -31,6 +31,7 @@ const SECTION: Record<string, string> = { payment: 'Payments', pricing: 'Regiona
 
 // One plain sentence under each switch or field.
 const HELP: Record<string, string> = {
+  'general.contact_email': 'Shown for "Contact us", "Book a demo" and privacy requests. Leave empty to hide those links.',
   'access.registration_enabled': 'Allow new people to create accounts.',
   'access.instructor_applications': 'Allow people to apply to become instructors.',
   'access.guest_browsing': 'Allow visitors to browse courses without an account.',
@@ -118,7 +119,7 @@ function Editor({ def, value, onChange }: { def: SettingDef; value: SettingValue
             {(zones.includes(String(value)) ? zones : [String(value), ...zones]).map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
           </NativeSelect>
         ) : (
-          <Input {...f} value={String(value)} maxLength={def.max_len} required={def.key === 'general.platform_name'} onChange={(e) => onChange(e.target.value)} />
+          <Input {...f} type={def.key.endsWith('_email') ? 'email' : 'text'} value={String(value)} maxLength={def.max_len} required={def.key === 'general.platform_name'} onChange={(e) => onChange(e.target.value)} />
         )
       }
     </Field>

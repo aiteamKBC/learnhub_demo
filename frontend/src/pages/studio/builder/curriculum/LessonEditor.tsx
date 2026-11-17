@@ -44,6 +44,8 @@ type LectureDraft = {
   live_duration_min: string
   live_join_url: string
   min_watch_pct: string
+  otj_min: string // programs (M19): off-the-job minutes counted on completion
+  cpd_min: string // programs (M19): CPD minutes
   prerequisite: string // an earlier lesson's key, or '' for none
   dur_h: string
   dur_m: string
@@ -65,6 +67,8 @@ function lectureDraft(l: StudioLecture): LectureDraft {
     live_duration_min: l.live_duration_min ? String(l.live_duration_min) : '60',
     live_join_url: l.live_join_url,
     min_watch_pct: String(l.min_watch_pct),
+    otj_min: String(l.expected_otj_min ?? 0),
+    cpd_min: String(l.cpd_min ?? 0),
     prerequisite: l.prerequisite_key ?? '',
     dur_h: pad(d.h),
     dur_m: pad(d.m),
@@ -137,6 +141,7 @@ export function LessonEditor({ course, lecture, number, readOnly, onDirty, onSav
   const [saved, setSaved] = useState(false)
 
   const timed = TIMED.includes(kind)
+  const program = course.kind === 'program'
   const lecChanged = !same(lec, fresh.lec)
   const quizChanged = !same(quiz, fresh.quiz)
   const asgChanged = !same(asg, fresh.asg)
@@ -166,6 +171,10 @@ export function LessonEditor({ course, lecture, number, readOnly, onDirty, onSav
     const p = Number(lec.min_watch_pct)
     if (!(Number.isInteger(p) && p >= 0 && p <= 100)) errs.min_watch_pct = 'Between 0 and 100.'
   }
+  const okMinutes = (v: string, most: number) => /^\d{1,4}$/.test(v.trim()) && Number(v) <= most
+  // one component is one ledger entry, and an entry holds at most a day (24 h)
+  if (program && !okMinutes(lec.otj_min, 1440)) errs.otj_min = 'Whole minutes, up to 1440 (24 hours).'
+  if (program && !okMinutes(lec.cpd_min, 6000)) errs.cpd_min = 'Whole minutes, up to 6000.'
   if (timed) {
     const okPart = (v: string, max: number) => /^\d{1,2}$/.test(v.trim()) && Number(v) <= max
     if (!okPart(lec.dur_h, 23) || !okPart(lec.dur_m, 59) || !okPart(lec.dur_s, 59)) errs.duration = 'Use hours, minutes (0–59) and seconds (0–59).'
@@ -198,6 +207,8 @@ export function LessonEditor({ course, lecture, number, readOnly, onDirty, onSav
       if (lec.live_join_url !== s.live_join_url) body.live_join_url = lec.live_join_url.trim()
       if (lec.min_watch_pct !== s.min_watch_pct) body.min_watch_pct = Number(lec.min_watch_pct)
       if (lec.prerequisite !== s.prerequisite) body.prerequisite_key = lec.prerequisite || null
+      if (lec.otj_min !== s.otj_min) body.expected_otj_min = Number(lec.otj_min)
+      if (lec.cpd_min !== s.cpd_min) body.cpd_min = Number(lec.cpd_min)
       if (durationPending) body.duration_sec = durationOf(lec)
       if (Object.keys(body).length) await updateLecture.mutateAsync({ lectureId: lecture.id, body })
       if (quizChanged && quiz && lecture.quiz) await updateQuiz.mutateAsync({ quizId: lecture.quiz.id, body: quizSettingsPayload(quiz) })
@@ -435,6 +446,17 @@ export function LessonEditor({ course, lecture, number, readOnly, onDirty, onSav
                 </div>
               ) : null}
             </div>
+
+            {program ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Off-the-job minutes" hint="Counted for the learner when they finish it." error={show('otj_min')}>
+                  {(p) => <Input {...p} inputMode="numeric" value={lec.otj_min} disabled={readOnly} onChange={(e) => set({ otj_min: e.target.value.replace(/\D/g, '') })} />}
+                </Field>
+                <Field label="CPD minutes" hint="Added to the module and program CPD." error={show('cpd_min')}>
+                  {(p) => <Input {...p} inputMode="numeric" value={lec.cpd_min} disabled={readOnly} onChange={(e) => set({ cpd_min: e.target.value.replace(/\D/g, '') })} />}
+                </Field>
+              </div>
+            ) : null}
 
             <SettingRow icon={<Star />} title="Required" body="Learners must finish it to complete the course.">
               <Switch checked={lec.is_required} disabled={readOnly} onCheckedChange={(is_required) => set({ is_required })} aria-label="Required to complete the course" />

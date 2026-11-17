@@ -77,7 +77,7 @@ async function session(b, email, opts = { viewport: { width: 1440, height: 900 }
   if (email) {
     await p.goto(BASE + '/login')
     await p.getByLabel('Email').fill(email)
-    await p.getByLabel('Password').fill(PASSWORD)
+    await p.getByLabel('Password', { exact: true }).fill(PASSWORD)
     await p.getByRole('button', { name: 'Log in' }).click()
     await p.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 30_000 })
   }

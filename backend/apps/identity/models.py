@@ -7,6 +7,7 @@ swapping the user model later is one of the few changes Django cannot migrate.
 """
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator
 from django.db import models
 
@@ -125,3 +126,31 @@ class InstructorInvite(BaseModel):
     class Meta:
         db_table = table(SCHEMA, "instructor_invites")
         indexes = [models.Index(fields=["email"], name="ix_instructor_invite_email")]
+
+
+class StaffRole(BaseModel):
+    """A provider staff role built from permission codes (core.staff_perms). The provider
+    reshapes roles in the console; `is_system` roles can be edited but never deleted."""
+
+    name = models.CharField(max_length=80, unique=True)
+    description = models.CharField(max_length=300, blank=True)
+    permissions = ArrayField(models.CharField(max_length=48), default=list, blank=True)
+    is_system = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = table(SCHEMA, "staff_roles")
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class StaffRoleAssignment(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="staff_roles")
+    role = models.ForeignKey(StaffRole, on_delete=models.CASCADE, related_name="assignments")
+    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        db_table = table(SCHEMA, "staff_role_assignments")
+        constraints = [models.UniqueConstraint(fields=["user", "role"], name="uq_staff_role_assignment")]
+        indexes = [models.Index(fields=["role"], name="ix_staff_role_members")]

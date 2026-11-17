@@ -16,19 +16,26 @@ from apps.learning import services as learning
 from apps.learning.models import Enrollment
 from apps.org import services as org_services
 from apps.org.models import OrgMember, OrgUnit
+from apps.platform.models import Setting
 from core.tenancy import tenant_context
 from core.tests import factories as f
 from core.tests.base import SchemaTransactionTestCase
 
+SETTINGS_TABLE = Setting._meta.db_table
+
 
 class QueryBudgetTest(SchemaTransactionTestCase):
     def count(self, path, **headers) -> int:
+        """Queries for one page, leaving out platform settings reads: those are cached for
+        60 s and refill on a timer (a slow run on Neon crosses it), never per row."""
         with CaptureQueriesContext(connection) as ctx:
             r = self.client.get(path, **headers)
         self.assertEqual(r.status_code, 200, path)
-        return len(ctx)
+        return sum(1 for q in ctx.captured_queries if SETTINGS_TABLE not in q["sql"])
 
     def assertConstant(self, pages: dict, grow, ceiling: int = 25, **headers):
+        for p in pages:  # warm up first: one-off cache fills (platform settings) are not per-row work
+            self.count(p, **headers)
         before = {p: self.count(p, **headers) for p in pages}
         grow()
         for path, name in pages.items():

@@ -64,7 +64,8 @@ class OutboxTest(PlatformBase):
         with tenant_context(**self.STAFF):
             ev = OutboxEvent.objects.get()
             self.assertEqual((ev.attempts, "downstream down" in ev.last_error), (1, True))
-            OutboxEvent.objects.update(available_at=timezone.now())
+            # due a minute ago: dispatch compares with the database clock, which may lag this one
+            OutboxEvent.objects.update(available_at=timezone.now() - timedelta(minutes=1))
         self.assertEqual(outbox.dispatch(), 1)
         self.assertEqual(outbox.dispatch(), 0)  # processed once
         self.assertEqual(seen, [2])

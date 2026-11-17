@@ -19,6 +19,7 @@ export type StudioCourseRow = Awaited<ReturnType<typeof fetchCourses>>[number]
 export type StudioCourse = Awaited<ReturnType<typeof fetchCourse>>
 export type WorkingVersion = NonNullable<StudioCourse['working_version']>
 export type StudioSection = WorkingVersion['sections'][number]
+export type StudioModule = NonNullable<WorkingVersion['modules']>[number]
 export type StudioLecture = StudioSection['lectures'][number]
 export type StudioQuiz = NonNullable<StudioLecture['quiz']>
 export type StudioQuizQuestion = StudioQuiz['questions'][number]
@@ -193,8 +194,40 @@ export function useCurriculum(courseId: string) {
   const done = () => courseChanged(qc, courseId)
   return {
     addSection: useMutation({
-      mutationFn: (v: { versionId: string; title: string; description?: string }) =>
-        unwrap(api.POST('/api/v1/studio/versions/{version_id}/sections', { params: { path: { version_id: v.versionId } }, body: { title: v.title, description: v.description ?? '' } })),
+      mutationFn: (v: { versionId: string; title: string; description?: string; moduleId?: string }) =>
+        unwrap(
+          api.POST('/api/v1/studio/versions/{version_id}/sections', {
+            params: { path: { version_id: v.versionId } },
+            body: { title: v.title, description: v.description ?? '', module_id: v.moduleId ?? null },
+          }),
+        ),
+      onSuccess: done,
+    }),
+    // ---- programs (M18): modules hold weeks (sections)
+    addModule: useMutation({
+      mutationFn: (v: { versionId: string; title: string }) =>
+        unwrap(api.POST('/api/v1/studio/versions/{version_id}/modules', { params: { path: { version_id: v.versionId } }, body: { title: v.title, description: '' } })),
+      onSuccess: done,
+    }),
+    renameModule: useMutation({
+      mutationFn: (v: { moduleId: string; title: string }) => unwrap(api.PATCH('/api/v1/studio/modules/{module_id}', { params: { path: { module_id: v.moduleId } }, body: { title: v.title } })),
+      onSuccess: done,
+    }),
+    deleteModule: useMutation({
+      mutationFn: (moduleId: string) => unwrap(api.DELETE('/api/v1/studio/modules/{module_id}', { params: { path: { module_id: moduleId } } })),
+      onSuccess: done,
+    }),
+    orderModules: useMutation({
+      mutationFn: (v: { versionId: string; ids: string[] }) =>
+        unwrap(api.PUT('/api/v1/studio/versions/{version_id}/modules/order', { params: { path: { version_id: v.versionId } }, body: { ids: v.ids } })),
+      onSuccess: done,
+    }),
+    orderWeeks: useMutation({
+      mutationFn: (v: { moduleId: string; ids: string[] }) => unwrap(api.PUT('/api/v1/studio/modules/{module_id}/weeks/order', { params: { path: { module_id: v.moduleId } }, body: { ids: v.ids } })),
+      onSuccess: done,
+    }),
+    moveWeek: useMutation({
+      mutationFn: (v: { sectionId: string; moduleId: string }) => unwrap(api.PUT('/api/v1/studio/sections/{section_id}/module', { params: { path: { section_id: v.sectionId } }, body: { module_id: v.moduleId } })),
       onSuccess: done,
     }),
     renameSection: useMutation({

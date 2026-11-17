@@ -24,7 +24,7 @@ fs.mkdirSync(OUT, { recursive: true })
       p.on('console', (m) => m.type() === 'error' && !/status of (401|404)/.test(m.text()) && errors.push(`${kind}/${theme}: ${m.text()}`))
       await p.goto(BASE + '/login')
       await p.getByLabel('Email').fill(DEMO_EMAIL)
-      await p.getByLabel('Password').fill(DEMO_PASSWORD)
+      await p.getByLabel('Password', { exact: true }).fill(DEMO_PASSWORD)
       await p.getByRole('button', { name: 'Log in' }).click()
       await p.waitForURL(/learn|business/)
       if (process.env.E2E_DEMO_ORG) {

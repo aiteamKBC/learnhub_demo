@@ -18,6 +18,7 @@ import { useAddToCart, useCheckout, usePlanEnroll, useToggleWishlist } from '@/f
 import { useAccess, useEnrolWithAccess } from '@/features/b2c/api'
 import { UnlockButton } from '@/features/b2c/UnlockButton'
 import { Price } from '@/features/catalog/CourseCard'
+import { ProgramBuy, ProgramIntakes } from '@/features/catalog/ProgramBuy'
 import { TeamBuy } from '@/features/corporate/TeamBuy'
 import { ReportButton } from '@/features/engagement/ReportButton'
 import { useMe } from '@/features/identity/auth'
@@ -41,7 +42,11 @@ const FULL_ACCESS_SOURCES = ['full_course_token_unlock', 'cash_package', 'admin_
 
 type Detail = NonNullable<ReturnType<typeof useCourse>['data']>
 
-function Curriculum({ sections, onPreview }: { sections: Detail['sections']; onPreview: (l: { key: string; title: string }) => void }) {
+/** Short courses list sections and lectures; programs (M18) show modules, their weeks and
+ * components. Weeks arrive in one global order, module by module. */
+function Curriculum({ sections, modules, onPreview }: { sections: Detail['sections']; modules?: Detail['modules']; onPreview: (l: { key: string; title: string }) => void }) {
+  const program = !!modules?.length
+  const moduleNo = new Map((modules ?? []).map((m, i) => [m.id, { n: i + 1, title: m.title }]))
   const [open, setOpen] = useState<Set<string>>(() => new Set(sections.slice(0, 1).map((s) => s.id)))
   const lectures = sections.reduce((n, s) => n + s.lectures.length, 0)
   const total = sections.reduce((n, s) => n + s.lectures.reduce((m, l) => m + l.duration_sec, 0), 0)
@@ -50,9 +55,10 @@ function Curriculum({ sections, onPreview }: { sections: Detail['sections']; onP
     <section aria-labelledby="curriculum">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 id="curriculum" className="text-xl font-semibold tracking-tight">Course content</h2>
+          <h2 id="curriculum" className="text-xl font-semibold tracking-tight">{program ? 'Program content' : 'Course content'}</h2>
           <p className="mt-1 text-sm text-muted">
-            {sections.length} sections · {lectures} lectures · {duration(total)} total
+            {program ? `${modules!.length} modules · ${sections.length} weeks · ${lectures} components` : `${sections.length} sections · ${lectures} lectures`}
+            {total ? ` · ${duration(total)} total` : ''}
           </p>
         </div>
         <Button variant="link" onClick={() => setOpen(allOpen ? new Set() : new Set(sections.map((s) => s.id)))}>
@@ -63,8 +69,15 @@ function Curriculum({ sections, onPreview }: { sections: Detail['sections']; onP
         {sections.map((s, i) => {
           const isOpen = open.has(s.id)
           const secs = s.lectures.reduce((m, l) => m + l.duration_sec, 0)
+          const mod = program && s.module_id && s.module_id !== sections[i - 1]?.module_id ? moduleNo.get(s.module_id) : undefined
           return (
             <div key={s.id} className={cn(i > 0 && 'border-t border-border')}>
+              {mod ? (
+                <h3 className="border-b border-border px-4 pt-4 pb-2 text-sm font-semibold">
+                  <span className="mr-1.5 text-[11px] tracking-wide text-primary uppercase">Module {mod.n}</span>
+                  {mod.title}
+                </h3>
+              ) : null}
               <button
                 type="button"
                 aria-expanded={isOpen}
@@ -77,9 +90,9 @@ function Curriculum({ sections, onPreview }: { sections: Detail['sections']; onP
                 className="flex w-full items-center gap-3 bg-surface-2/50 px-4 py-3.5 text-left transition-colors hover:bg-surface-2"
               >
                 <ChevronDown className={cn('size-4 shrink-0 text-muted transition-transform', isOpen && 'rotate-180')} />
-                <span className="flex-1 text-[15px] font-medium">{s.title}</span>
+                <span className="flex-1 text-[15px] font-medium">{program ? `Week ${i + 1}: ${s.title}` : s.title}</span>
                 <span className="text-xs whitespace-nowrap text-muted">
-                  {s.lectures.length} {s.lectures.length === 1 ? 'lecture' : 'lectures'}
+                  {s.lectures.length} {program ? (s.lectures.length === 1 ? 'component' : 'components') : s.lectures.length === 1 ? 'lecture' : 'lectures'}
                   {secs ? ` · ${duration(secs)}` : ''}
                 </span>
               </button>
@@ -278,7 +291,10 @@ function BuyBox({ course, onPreview }: { course: Detail; onPreview?: () => void 
         ) : null}
       </div>
       <div className="p-5">
-        {v.enrollment_id ? (
+        {course.kind === 'program' && (course.program_access || !v.enrollment_id) ? (
+          // programs (M21): offers, intakes and monthly payments; a company place shows "enrolled" below
+          <ProgramBuy course={course} progress={v.progress_pct ?? null} />
+        ) : v.enrollment_id ? (
           <>
             <p className="text-sm font-medium">You're enrolled</p>
             <Progress value={v.progress_pct ?? 0} className="mt-3" label="Course progress" />
@@ -366,9 +382,9 @@ function BuyBox({ course, onPreview }: { course: Detail; onPreview?: () => void 
         <ul className="mt-5 grid gap-2.5 border-t border-border pt-5 text-sm">
           {[
             [PlayCircle, `${duration(course.total_duration_sec)} of content`],
-            [BarChart3, `${course.lecture_count} lectures`],
+            [BarChart3, `${course.lecture_count} ${course.kind === 'program' ? 'components' : 'lectures'}`],
             [Smartphone, 'Learn on phone and desktop'],
-            [InfinityIcon, 'Lifetime access'],
+            ...(course.kind === 'program' ? [] : [[InfinityIcon, 'Lifetime access']]),
             ...(course.cpd_hours ? [[Award, `Certificate · ${course.cpd_hours} CPD hours`]] : [[Award, 'Certificate of completion']]),
           ].map(([Icon, text]) => {
             const I = Icon as LucideIcon
@@ -468,7 +484,8 @@ export function CoursePage() {
               </ul>
             </section>
           ) : null}
-          <Curriculum sections={c.sections} onPreview={setPreview} />
+          <Curriculum sections={c.sections} modules={c.kind === 'program' ? c.modules : undefined} onPreview={setPreview} />
+          {c.kind === 'program' && c.offers.some((o) => o.mode === 'live') ? <ProgramIntakes intakes={c.intakes} /> : null}
           <section aria-labelledby="about">
             <h2 id="about" className="text-xl font-semibold tracking-tight">About this course</h2>
             {/* description is sanitised on the server (nh3) before it is stored */}
@@ -493,7 +510,7 @@ export function CoursePage() {
         <aside className="order-1 lg:order-2 lg:-mt-64">
           <div className="lg:sticky lg:top-24">
             <BuyBox course={c} onPreview={firstPreview ? () => setPreview({ key: firstPreview.key, title: firstPreview.title }) : undefined} />
-            <TeamBuy courseId={c.id} title={c.title} />
+            {c.kind === 'program' ? null : <TeamBuy courseId={c.id} title={c.title} />}
           </div>
         </aside>
       </div>
