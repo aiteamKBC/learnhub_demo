@@ -32,15 +32,30 @@ def require_org(request):
     return org_id
 
 
-def require_org_role(request, minimum: OrgRole) -> OrgRole:
+def _member(request, org_id, minimum: OrgRole, allow_setup: bool):
+    """The caller's membership (one query, joined to the company). A company still being set
+    up (M22, D8) opens only the endpoints that finish the setup (allow_setup)."""
+    from apps.org.models import Organization, OrgMember
+
+    m = (
+        OrgMember.objects.filter(org_id=org_id, user_id=request.user.id, removed_at__isnull=True)
+        .select_related("org")
+        .only("id", "role", "org__onboarding_state")
+        .first()
+    )
+    if m is None or ROLE_RANK[OrgRole(m.role)] < ROLE_RANK[minimum]:
+        raise PermissionDenied("Insufficient role.")
+    if not allow_setup and m.org.onboarding_state != Organization.Onboarding.ACTIVE:
+        raise ServiceError(
+            "workspace_locked", "Finish your company's first order to open the workspace.", status=403
+        )
+    return m
+
+
+def require_org_role(request, minimum: OrgRole, *, allow_setup: bool = False) -> OrgRole:
     """Allow members whose role is at least `minimum` (owner > admin > manager > learner)."""
     org_id = require_org(request)
-    from apps.org.selectors import member_role
-
-    role = member_role(user_id=request.user.id, org_id=org_id)
-    if role is None or ROLE_RANK[OrgRole(role)] < ROLE_RANK[minimum]:
-        raise PermissionDenied("Insufficient role.")
-    return OrgRole(role)
+    return OrgRole(_member(request, org_id, minimum, allow_setup).role)
 
 
 def require_staff(request) -> None:
@@ -92,14 +107,11 @@ class Scope:
             raise PermissionDenied("Only company admins can do this.")
 
 
-def org_scope(request, minimum: OrgRole = OrgRole.MANAGER) -> Scope:
+def org_scope(request, minimum: OrgRole = OrgRole.MANAGER, *, allow_setup: bool = False) -> Scope:
     org_id = require_org(request)
-    from apps.org.models import OrgMember
     from apps.org.selectors import managed_unit_paths
 
-    m = OrgMember.objects.filter(org_id=org_id, user_id=request.user.id, removed_at__isnull=True).first()
-    if m is None or ROLE_RANK[OrgRole(m.role)] < ROLE_RANK[minimum]:
-        raise PermissionDenied("Insufficient role.")
+    m = _member(request, org_id, minimum, allow_setup)
     role = OrgRole(m.role)
     if ROLE_RANK[role] >= ROLE_RANK[OrgRole.ADMIN]:
         return Scope(org_id, role, m.id, None)

@@ -1,8 +1,9 @@
-import { Award, ChevronLeft, ChevronRight, Info, ListTree, Lock, Megaphone, MessagesSquare, NotebookPen, PanelRightClose, PanelRightOpen, PartyPopper, Star } from 'lucide-react'
+import { Award, CalendarClock, ChevronLeft, ChevronRight, ClipboardList, Info, ListTree, Lock, Megaphone, MessagesSquare, NotebookPen, PanelRightClose, PanelRightOpen, PartyPopper, Star, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { ApiError } from '@/api/client'
 import { Backdrop } from '@/components/art/backdrops'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -15,6 +16,7 @@ import { type Lecture, type Player, certificatePdfUrl, useEnrollmentId, useLectu
 import { cn } from '@/lib/cn'
 import { useCountUp, useFill } from '@/lib/motion'
 import { Link, useNavigate } from '@/lib/router'
+import { timetable } from '@/lib/schedule'
 
 import { AssignmentStage } from './AssignmentStage'
 import { Curriculum } from './Curriculum'
@@ -139,14 +141,30 @@ export function PlayerPage() {
         </Button>
       </header>
 
-      {error ? (
+      {error instanceof ApiError && error.code === 'payment_overdue' ? (
+        // programs paid monthly (M21): access is paused until the missed payment goes through
+        <div className="flex-1 p-6">
+          <EmptyState
+            icon={<Lock />}
+            title="Your access is paused"
+            body={error.message}
+            action={
+              <Button asChild>
+                <Link to="/account/orders">Go to my orders</Link>
+              </Button>
+            }
+          />
+        </div>
+      ) : error ? (
         <div className="flex-1 p-6">
           <ErrorState message={error.message} onRetry={() => void (lookup.refetch(), player.refetch())} />
         </div>
       ) : (
         <div className={cn('grid flex-1', sidebar && 'lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]')}>
           <main id="main" className="min-w-0">
-            {locked && p ? (
+            {locked?.module_locked && p ? (
+              <ModuleLockedStage slug={route.slug} title={locked.title} />
+            ) : locked && p ? (
               <LockedStage slug={route.slug} title={locked.title} prerequisiteKey={locked.prerequisite_key} prerequisiteTitle={locked.prerequisite_title} />
             ) : <Stage lecture={lecture.data} loading={lecture.isLoading || !p} error={lecture.error} enrollmentId={lookup.enrollmentId} slug={route.slug} startAt={params.get('t') ? Number(params.get('t')) : undefined} onRetry={() => void lecture.refetch()} />}
 
@@ -265,6 +283,24 @@ export function PlayerPage() {
   )
 }
 
+/** Programs bought module by module (M21): this lesson is in a module the learner hasn't bought. */
+function ModuleLockedStage({ slug, title }: { slug: string; title: string }) {
+  return (
+    <div className="animate-reveal border-b border-border">
+      <EmptyState
+        icon={<Lock />}
+        title={`“${title}” is in another module`}
+        body="This module isn't part of what you bought. You can add it on the program page."
+        action={
+          <Button asChild>
+            <Link to={`/courses/${slug}`}>See buying options</Link>
+          </Button>
+        }
+      />
+    </div>
+  )
+}
+
 /** A lesson whose prerequisite isn't complete: say which one, and link to it. */
 function LockedStage({ slug, title, prerequisiteKey, prerequisiteTitle }: { slug: string; title: string; prerequisiteKey?: string | null; prerequisiteTitle?: string | null }) {
   return (
@@ -302,9 +338,20 @@ function Stage({ lecture, loading, error, enrollmentId, slug, startAt, onRetry }
           {...props}
           startAt={startAt}
           onEnded={(completed) => {
-            const next = lecture.next_key ? { action: { label: 'Next lecture', onClick: () => document.getElementById('next-lecture')?.click() } } : {}
+            const next = lecture.next_key
+              ? {
+                  action: {
+                    label: 'Next lecture',
+                    onClick: () => document.getElementById('next-lecture')?.click(),
+                  },
+                }
+              : {}
             if (completed) toast.success('Lecture complete', next)
-            else if (!lecture.completed) toast('Lecture finished', { description: 'Parts were skipped, so it isn’t marked complete yet. Watch the rest to complete it.', ...next })
+            else if (!lecture.completed)
+              toast('Lecture finished', {
+                description: 'Parts were skipped, so it isn’t marked complete yet. Watch the rest to complete it.',
+                ...next,
+              })
             else if (lecture.next_key) toast('Lecture finished', next)
           }}
         />
@@ -364,8 +411,14 @@ function Overview({ player, lecture }: { player: Player; lecture: Lecture }) {
   const left = all.filter((l) => !l.completed).reduce((t, l) => t + l.duration_sec, 0)
   const stats = [
     { label: 'Complete', value: `${Math.round(player.progress_pct)}%` },
-    { label: 'Lectures', value: `${all.filter((l) => l.completed).length} / ${all.length}` },
-    { label: 'Course length', value: minutes(total) || '—' },
+    {
+      label: player.kind === 'program' ? 'Components' : 'Lectures',
+      value: `${all.filter((l) => l.completed).length} / ${all.length}`,
+    },
+    {
+      label: player.kind === 'program' ? 'Program length' : 'Course length',
+      value: minutes(total) || '—',
+    },
     { label: 'Left to go', value: minutes(left) || 'Nothing' },
   ]
   return (
@@ -378,6 +431,40 @@ function Overview({ player, lecture }: { player: Player; lecture: Lecture }) {
           </div>
         ))}
       </div>
+      {player.kind === 'program' ? (
+        <Link to={`/learn/${player.slug}/record`} className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm transition-colors hover:bg-surface-2">
+          <ClipboardList className="size-5 shrink-0 text-primary" aria-hidden />
+          <span className="min-w-0 flex-1 text-sm">
+            <span className="block font-semibold">My record</span>
+            <span className="text-muted">Off-the-job hours, KSBs, CPD and module certificates</span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />
+        </Link>
+      ) : null}
+      {player.kind === 'program' ? (
+        <Link to={`/learn/${player.slug}/sessions`} className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm transition-colors hover:bg-surface-2">
+          <CalendarClock className="size-5 shrink-0 text-primary" aria-hidden />
+          <span className="min-w-0 flex-1 text-sm">
+            <span className="block font-semibold">Live sessions and workshops</span>
+            <span className="text-muted">Join your group's sessions, watch recordings and book workshops</span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />
+        </Link>
+      ) : null}
+      {player.group ? (
+        <section aria-label="Your group" className="flex flex-wrap items-start gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
+          <Users className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="font-semibold">
+              {player.group.name} · {player.group.cohort_name}
+            </p>
+            <p className="text-muted">
+              {timetable(player.group)}
+              {player.group.tutor_name ? ` · Tutor: ${player.group.tutor_name}` : ''}
+            </p>
+          </div>
+        </section>
+      ) : null}
       {lecture.resources?.length ? <Resources lecture={lecture} enrollmentId={player.enrollment_id} slug={player.slug} /> : null}
       <p className="text-sm text-muted">
         Want the full description, the instructor and reviews?{' '}

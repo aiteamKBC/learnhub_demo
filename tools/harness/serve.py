@@ -53,7 +53,8 @@ def start(cmd, cwd, env, log):
     return subprocess.Popen(cmd, cwd=cwd, env=env, stdout=out, stderr=subprocess.STDOUT, creationflags=flags, start_new_session=not WIN)
 
 
-env = {**os.environ, **e2e_env(), "PYTHONPATH": f"{BACKEND}{os.pathsep}{HERE}", "DJANGO_SETTINGS_MODULE": "config.settings.dev"}
+# MAIL_MODE is forced: E2E runs never send real email, whatever backend/.env says.
+env = {**os.environ, **e2e_env(), "PYTHONPATH": f"{BACKEND}{os.pathsep}{HERE}", "DJANGO_SETTINGS_MODULE": "config.settings.dev", "MAIL_MODE": "console"}
 
 if not up("http://127.0.0.1:8000/api/v1/identity/csrf"):
     start([str(PY), "-m", "waitress", "--listen=127.0.0.1:8000", "--threads=8", "e2e_wsgi:application"], BACKEND, env, "django.log")
@@ -72,7 +73,7 @@ def defines(key: str) -> bool:
 
 if defines("REDIS_URL"):  # Celery is eager without Redis; with it, a worker must run
     pool = ["--pool=solo"] if WIN else ["-c", "2"]
-    start([str(PY), "-m", "celery", "-A", "config", "worker", "-l", "warning", *pool], BACKEND, env, "celery.log")
+    start([str(PY), "-m", "celery", "-A", "e2e_celery", "worker", "-l", "warning", *pool], BACKEND, env, "celery.log")
 if not up("http://localhost:5173/"):
     npx = "npx.cmd" if WIN else "npx"
     subprocess.run([npx, "vite", "build"], cwd=FRONTEND, check=True)

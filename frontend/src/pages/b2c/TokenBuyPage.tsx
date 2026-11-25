@@ -1,6 +1,5 @@
 import { Coins, Info, Wallet } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardBody } from '@/components/ui/card'
@@ -8,10 +7,11 @@ import { Input } from '@/components/ui/input'
 import { EmptyState, ErrorState, PageHeader } from '@/components/ui/misc'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrencies } from '@/features/commerce/api'
-import { useTokenPacks, useTokenRate, useTopUpLimits, useWalletBalance } from '@/features/b2c/api'
+import { useMoney, useTokenPacks, useTokenRate, useTopUpLimits, useWalletBalance } from '@/features/b2c/api'
 import type { ReviewItem } from '@/pages/b2c/CheckoutReviewPage'
 import { useCurrency } from '@/lib/currency'
 import { count, money } from '@/lib/format'
+import { Link, useNavigate } from '@/lib/router'
 
 const RESULT_PACK = '/wallet/result?kind=pack'
 const RESULT_TOPUP = '/wallet/result?kind=topup'
@@ -35,7 +35,7 @@ export function TokenBuyPage() {
           description="Top up your wallet, then spend tokens to unlock exactly what you want."
           back={
             <Button variant="ghost" size="sm" asChild>
-              <a href="/wallet">← Wallet</a>
+              <Link to="/wallet">← Wallet</Link>
             </Button>
           }
           actions={
@@ -55,6 +55,7 @@ export function TokenBuyPage() {
 
 function Packs({ onReview }: { onReview: (item: ReviewItem) => void }) {
   const { data, isLoading, error, refetch } = useTokenPacks()
+  const fmt = useMoney()
 
   if (isLoading)
     return (
@@ -80,7 +81,7 @@ function Packs({ onReview }: { onReview: (item: ReviewItem) => void }) {
               <span className="text-sm text-muted">tokens</span>
             </div>
             <p className="mt-1 text-sm font-medium">{p.name}</p>
-            <p className="mt-4 text-2xl font-bold tracking-tight">{money(p.amount_minor, p.currency)}</p>
+            <p className="mt-4 text-2xl font-bold tracking-tight">{fmt(p.amount_minor, p.currency)}</p>
             <Button
               className="mt-4"
               onClick={() =>
@@ -148,6 +149,8 @@ function CustomTopUp({ onReview }: { onReview: (item: ReviewItem) => void }) {
         <CardBody className="space-y-4">
           {rate.isLoading ? (
             <Skeleton className="h-10 rounded-md" />
+          ) : rate.error ? (
+            <ErrorState message="We couldn't load the token rate." onRetry={() => void rate.refetch()} />
           ) : rate.data == null ? (
             // Truthful not-configured state: no token exchange rate set by an admin.
             <div className="flex items-start gap-2 rounded-md bg-surface-2 p-3 text-sm text-muted">
@@ -162,7 +165,7 @@ function CustomTopUp({ onReview }: { onReview: (item: ReviewItem) => void }) {
                   type="number"
                   inputMode="decimal"
                   min="0"
-                  step="0.01"
+                  step={exponent ? String(1 / factor) : '1'}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"

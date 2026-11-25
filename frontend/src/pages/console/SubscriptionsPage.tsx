@@ -32,7 +32,7 @@ import {
   useSubsOverview,
   useUpdatePlan,
 } from '@/features/console/subscriptions'
-import { ConfirmDialog, DateRangeSelect, DetailSheet, gbp, gbpShort, InfoRow, KpiCard, LoadMore, StatusPill, useParam, useRangeParam, useTabParam } from '@/features/console/ui'
+import { ConfirmDialog, DateRangeSelect, DetailSheet, gbp, gbpShort, InfoRow, KpiCard, LoadMore, StatusPill, useParam, usePatchParams, useRangeParam, useTabParam } from '@/features/console/ui'
 import { useDebounced } from '@/features/org/ui'
 import { cn } from '@/lib/cn'
 import { money } from '@/lib/format'
@@ -118,7 +118,7 @@ function PlansCard({ onOpen }: { onOpen: (id: string) => void }) {
 // ---------------------------------------------------------------- plan panel
 function PlanSheet({ onEdit }: { onEdit: (p: ConsolePlan) => void }) {
   const [id, setId] = useParam('plan')
-  const [, setTab] = useTabParam(TABS, 'overview')
+  const patchParams = usePatchParams()
   const plans = usePlans()
   const p = plans.data?.find((x) => x.id === id)
   const [panel, setPanel] = useState('overview')
@@ -126,7 +126,7 @@ function PlanSheet({ onEdit }: { onEdit: (p: ConsolePlan) => void }) {
   const status = usePlanStatus()
   const duplicate = useDuplicatePlan()
   useEffect(() => setPanel('overview'), [id])
-  const go = (t: Tab) => (setId(''), setTab(t))
+  const go = (t: Tab) => patchParams({ plan: '', subscription: '', tab: t === 'overview' ? '' : t })
   return (
     <DetailSheet open={!!id} onOpenChange={(o) => !o && setId('')} title={p?.name ?? 'Plan'} description={p?.description || undefined}>
       {!p ? (
@@ -358,7 +358,7 @@ function PlanForm({ plan, onDone }: { plan: ConsolePlan | null; onDone: (id?: st
   return (
     <form onSubmit={submit} className="grid gap-4">
       <Field label="Plan name">{(p) => <Input {...p} required minLength={2} maxLength={80} value={v.name} onChange={set('name')} />}</Field>
-      {!plan ? <Field label="Code" hint="Lower-case letters, numbers and dashes. Used in links and reports.">{(p) => <Input {...p} required pattern="[a-z0-9-]+" maxLength={40} value={v.code} onChange={set('code')} />}</Field> : null}
+      {!plan ? <Field label="Code" hint="Lower-case letters, numbers and dashes. Used in links and reports.">{(p) => <Input {...p} required pattern="[a-z0-9\-]+" maxLength={40} value={v.code} onChange={set('code')} />}</Field> : null}
       <Field label="Short description">{(p) => <Textarea {...p} maxLength={300} value={v.description} onChange={set('description')} />}</Field>
       {!plan ? (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -394,7 +394,7 @@ function PlanForm({ plan, onDone }: { plan: ConsolePlan | null; onDone: (id?: st
 }
 
 // ---------------------------------------------------------------- subscribers, payments, changes
-function SubscribersCard() {
+function SubscribersCard({ highlight }: { highlight?: string }) {
   const plans = usePlans()
   const [text, setText] = useState('')
   const [plan, setPlan] = useState('')
@@ -430,7 +430,7 @@ function SubscribersCard() {
             <thead><tr><Th>Subscriber</Th><Th>Plan</Th><Th>Seats</Th><Th>Status</Th><Th>Renews or ends</Th><Th>Started</Th><Th><span className="sr-only">Actions</span></Th></tr></thead>
             <tbody className="stagger">
               {rows.map((s) => (
-                <Tr key={s.id}>
+                <Tr key={s.id} className={cn(s.id === highlight && 'bg-primary-soft')} aria-current={s.id === highlight ? 'true' : undefined}>
                   <Td>
                     <span className="block max-w-52 truncate font-medium">{s.company || s.name || s.email}</span>
                     <span className="block max-w-52 truncate text-xs text-muted">{s.email}</span>
@@ -449,6 +449,7 @@ function SubscribersCard() {
               ))}
             </tbody>
           </Table>
+          {highlight && !rows.some((s) => s.id === highlight) && list.hasNextPage ? <p className="px-5 pt-3 text-[13px] text-muted">The subscription from your link is further down the list. Choose Load more to find it.</p> : null}
           <LoadMore shown={rows.length} noun="subscribers" hasMore={list.hasNextPage} loading={list.isFetchingNextPage} onMore={() => void list.fetchNextPage()} />
         </>
       )}
@@ -583,9 +584,14 @@ function RevenueTab() {
 }
 
 export function ConsoleSubscriptionsPage() {
-  const [tab, setTab] = useTabParam(TABS, 'overview')
+  const [urlTab] = useTabParam(TABS, 'overview')
   const [range, setRange] = useRangeParam()
   const [, setPlan] = useParam('plan')
+  // reports link to ?subscription=<id>: open the subscribers list with that row marked
+  const [subscription] = useParam('subscription')
+  const tab: Tab = subscription && urlTab === 'overview' ? 'subscribers' : urlTab
+  const patchParams = usePatchParams()
+  const setTab = (t: Tab) => patchParams({ tab: t === 'overview' ? '' : t, subscription: '' })
   const [form, setForm] = useState<{ plan: ConsolePlan | null } | null>(null)
   return (
     <>
@@ -613,7 +619,7 @@ export function ConsoleSubscriptionsPage() {
           <PlansCard onOpen={setPlan} />
         </TabsContent>
         <TabsContent value="plans"><PlansCard onOpen={setPlan} /></TabsContent>
-        <TabsContent value="subscribers"><SubscribersCard /></TabsContent>
+        <TabsContent value="subscribers"><SubscribersCard highlight={subscription} /></TabsContent>
         <TabsContent value="payments"><PaymentsCard /></TabsContent>
         <TabsContent value="changes"><ChangesCard /></TabsContent>
         <TabsContent value="revenue"><RevenueTab /></TabsContent>

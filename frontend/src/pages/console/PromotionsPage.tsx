@@ -216,7 +216,7 @@ function PromotionForm({ promo, initialKind, onDone }: { promo: ConsolePromotion
       targets,
     }
     if (promo) update.mutate({ id: promo.id, body }, { onSuccess: () => (toast.success('Promotion saved.'), onDone(promo.id)), onError: fail })
-    else create.mutate(body, { onSuccess: (r) => (toast.success(v.draft ? 'Saved as a draft.' : 'Promotion created.'), onDone((r as { id: string }).id)), onError: fail })
+    else create.mutate(body, { onSuccess: (r) => (toast.success(v.draft ? 'Saved as a draft.' : 'Promotion created.'), onDone(r.id)), onError: fail })
   }
   return (
     <form className="grid gap-5" onSubmit={submit} noValidate>
@@ -368,7 +368,7 @@ function PromotionSheet({ onEdit }: { onEdit: (p: ConsolePromotion) => void }) {
           </Tabs>
           <section aria-label="Promotion actions" className="grid gap-2 sm:grid-cols-3">
             <Button variant="secondary" onClick={() => onEdit(p)}><Pencil /> Edit</Button>
-            <Button variant="secondary" loading={duplicate.isPending} onClick={() => duplicate.mutate(p.id, { onSuccess: (r) => (toast.success('Copy saved as a draft. Give it a code and switch it on.'), setId((r as { id: string }).id)), onError: fail })}>
+            <Button variant="secondary" loading={duplicate.isPending} onClick={() => duplicate.mutate(p.id, { onSuccess: (r) => (toast.success('Copy saved as a draft. Give it a code and switch it on.'), setId(r.id)), onError: fail })}>
               <Copy /> Duplicate
             </Button>
             <Button variant="secondary" className="text-danger" disabled={p.status === 'ended'} onClick={() => setConfirm(true)}><PauseCircle /> Deactivate</Button>

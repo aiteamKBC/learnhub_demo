@@ -9,6 +9,9 @@ ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
 goal = ROOT / "docs" / "goal.md"
 needs = ROOT / "docs" / "NEEDS-USER.md"
 lines = ["Project LearnHub LMS. Work from the repo root. Rules: CLAUDE.md (re-read it now if this is after a compaction)."]
+handoff = ROOT / ".claude" / "HANDOFF.md"
+if handoff.exists():
+    lines.append("HANDOFF: read .claude/HANDOFF.md first (what is done, what is missing, the user's unwritten rules).")
 if goal.exists():
     text = goal.read_text(encoding="utf-8")
     done = re.findall(r"^- \[x\] (.+)$", text, re.MULTILINE | re.IGNORECASE)

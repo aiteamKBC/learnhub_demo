@@ -4,13 +4,22 @@ import random
 
 from django.db.models import Prefetch
 
-from .models import CourseVersion, Lecture, Quiz, QuizQuestion, Section
+from .models import CourseVersion, Lecture, Module, Quiz, QuizQuestion, Section
 
 
 def curriculum(version: CourseVersion):
     """Sections with their lectures, in order, in two queries."""
     lectures = Lecture.objects.order_by("position").select_related("video")
     return version.sections.order_by("position").prefetch_related(Prefetch("lectures", queryset=lectures))
+
+
+def modules(version_id) -> list[dict]:
+    """A program version's modules in order (one query). Weeks point at them by module_id."""
+    return list(
+        Module.objects.filter(version_id=version_id)
+        .order_by("position")
+        .values("id", "module_key", "title", "description")
+    )
 
 
 def learner_quiz(quiz: Quiz, *, seed: int | None = None) -> dict:
@@ -43,4 +52,4 @@ def learner_quiz(quiz: Quiz, *, seed: int | None = None) -> dict:
     return {"id": str(quiz.id), "time_limit_sec": quiz.time_limit_sec, "questions": out}
 
 
-__all__ = ["curriculum", "learner_quiz", "Section"]
+__all__ = ["curriculum", "learner_quiz", "modules", "Section"]

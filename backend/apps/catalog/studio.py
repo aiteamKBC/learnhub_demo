@@ -4,7 +4,7 @@ Mounted at /api/v1/studio/. Who may edit a course (checked on EVERY call, answer
 404 rather than 403 so the API never confirms that someone else's course exists):
     marketplace course  -> a co-instructor with can_edit
     company course      -> an admin of the owning company (X-Org-Id)
-    platform course     -> platform staff
+    platform course     -> platform staff (a PROGRAM also needs the programs.build permission)
 
 Learners' submissions, attempts and enrolments are private rows (RLS). An instructor
 reads or grades them only through a narrow, elevated context opened AFTER the course
@@ -35,6 +35,7 @@ from core import html, storage
 from core.auth import session_auth
 from core.errors import ServiceError
 from core.permissions import OrgRole, org_scope
+from core.staff_perms import has_perm, require_perm
 from core.tenancy import tenant_context
 
 from . import bunny, media, resources, services, teams
@@ -47,6 +48,7 @@ from .models import (
     Lecture,
     LectureResource,
     MediaAsset,
+    Module,
     Quiz,
     QuizQuestion,
     Section,
@@ -64,6 +66,7 @@ from .studio_schemas import (
     StudioGradingQueueOut,
     StudioLectureCreateOut,
     StudioMediaStatusOut,
+    StudioModuleCreateOut,
     StudioPayoutAccountOut,
     StudioPayoutAccountSetOut,
     StudioPayoutOut,
@@ -98,7 +101,9 @@ def editable(request, course_id) -> Course:
         scope = org_scope(request, OrgRole.ADMIN)
         allowed = course.owner_org_id == scope.org_id
     elif course.ownership == Course.Ownership.PLATFORM:
-        allowed = request.user.is_staff
+        allowed = request.user.is_staff and (
+            course.kind != Course.Kind.PROGRAM or has_perm(request, "programs.build")
+        )
     else:
         allowed = CourseInstructor.objects.filter(course=course, user=request.user, can_edit=True).exists()
         if allowed:
@@ -173,6 +178,21 @@ class PriceIn(Schema):
 class SectionIn(Schema):
     title: str = Field(..., min_length=1, max_length=200)
     description: str = Field("", max_length=2000)
+    module_id: UUID | None = None  # programs: the module this week belongs to
+
+
+class ModuleIn(Schema):
+    title: str = Field(..., min_length=1, max_length=200)
+    description: str = Field("", max_length=4000)
+
+
+class ModulePatch(Schema):
+    title: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = Field(None, max_length=4000)
+
+
+class WeekMoveIn(Schema):
+    module_id: UUID
 
 
 class OrderIn(Schema):
@@ -200,6 +220,10 @@ class LecturePatch(Schema):
     live_duration_min: int | None = Field(None, ge=5, le=600)
     live_join_url: str | None = Field(None, max_length=500)
     min_watch_pct: int | None = Field(None, ge=0, le=100)
+    expected_otj_min: int | None = Field(
+        None, ge=0, le=1440
+    )  # programs: off-the-job minutes (one ledger entry)
+    cpd_min: int | None = Field(None, ge=0, le=6000)  # programs: CPD minutes
     video_id: str | None = None
     section_id: str | None = None
     prerequisite_key: UUID | None = None  # send null to remove
@@ -415,6 +439,27 @@ def create_course(request, body: CourseIn):
     return {"id": course.id, "slug": course.slug}
 
 
+@router.post("/programs", response=StudioCourseCreateOut)
+@transaction.atomic
+def create_program(request, body: CourseIn):
+    """A provider program (Programs plan D1, D21): provider staff with programs.build only."""
+    require_perm(request, "programs.build")
+    title = html.plain(body.title, 160).strip()
+    slug = f"{slugify(title)[:100] or 'program'}-{secrets.token_hex(3)}"
+    course = services.create_course(title=title, slug=slug, ownership=Course.Ownership.PLATFORM,
+                                    created_by=request.user, category_id=body.category_id,
+                                    kind=Course.Kind.PROGRAM, in_subscription=False)  # fmt: skip
+    return {"id": course.id, "slug": course.slug}
+
+
+def _editor_modules(version: CourseVersion) -> list:
+    if version.course.kind != Course.Kind.PROGRAM:
+        return []
+    return list(
+        version.modules.order_by("position").values("id", "module_key", "title", "description", "position")
+    )
+
+
 def _editor_tree(version: CourseVersion) -> list:
     """The builder's view: everything, INCLUDING correct answers (editors only)."""
     sections = version.sections.order_by("position").prefetch_related(
@@ -434,8 +479,8 @@ def _editor_tree(version: CourseVersion) -> list:
                     "live_starts_at": lec.live_starts_at, "live_duration_min": lec.live_duration_min,
                     "live_join_url": lec.live_join_url, "live_provider": lec.live_provider,
                     "teams_meeting_id": lec.teams_meeting_id, "teams_organizer": lec.teams_organizer,
-                    "min_watch_pct": lec.min_watch_pct,
-                    "prerequisite_key": lec.prerequisite_key}  # fmt: skip
+                    "min_watch_pct": lec.min_watch_pct, "expected_otj_min": lec.expected_otj_min,
+                    "cpd_min": lec.cpd_min, "prerequisite_key": lec.prerequisite_key}  # fmt: skip
             item["resources"] = [
                 resources.payload(r) for r in sorted(lec.resources.all(), key=lambda r: r.position)
             ]
@@ -463,7 +508,7 @@ def _editor_tree(version: CourseVersion) -> list:
                                       "max_resubmissions": a.max_resubmissions, "submission_types": a.submission_types}  # fmt: skip
             lectures.append(item)
         out.append({"id": s.id, "title": s.title, "description": s.description, "position": s.position,
-                    "lectures": lectures})  # fmt: skip
+                    "module_id": s.module_id, "lectures": lectures})  # fmt: skip
     return out
 
 
@@ -497,7 +542,7 @@ def course(request, course_id: str):
     return {
         "id": c.id, "slug": c.slug, "title": c.title, "subtitle": c.subtitle, "description": c.description,
         "level": c.level, "category_id": c.category_id, "outcomes": c.outcomes, "requirements": c.requirements, "thumbnail_url": c.thumbnail_url, "status": c.status,
-        "ownership": c.ownership, "cpd_hours": float(c.cpd_hours) if c.cpd_hours else None,
+        "ownership": c.ownership, "kind": c.kind, "cpd_hours": float(c.cpd_hours) if c.cpd_hours else None,
         "in_subscription": c.in_subscription, "in_business": c.in_business,
         "certificate_template_id": c.certificate_template_id,
         "price": {"free": price.is_free, "tier_id": price.tier_id, "tier": price.tier.name if price.tier else None,
@@ -505,7 +550,8 @@ def course(request, course_id: str):
         "versions": versions,
         "working_version": {"id": version.id, "number": version.number, "status": version.status,
                             "editable": version.status in ("draft", "changes_requested"),
-                            "checklist": services.publish_checklist(version),
+                            "checklist": services.publish_checklist(version, cash_price=price),
+                            "modules": _editor_modules(version),
                             "sections": _editor_tree(version)} if version else None,
     }  # fmt: skip
 
@@ -549,6 +595,11 @@ def submit(request, version_id: str, body: SubmitIn):
     v = services.submit(version=v, by=request.user, change_summary=html.plain(body.change_summary, 2000),
                         requires_recompletion=body.requires_recompletion,
                         is_major_change=body.is_major_change)  # fmt: skip
+    # a trusted instructor (console > People > permissions) skips the review queue
+    if v.status == CourseVersion.Status.IN_REVIEW and instructor_perms.publishes_without_review(
+        request.user, v.course
+    ):
+        v = services.approve(version=v, reviewer=request.user, notes="Published without review (permission).")
     return {"status": v.status}
 
 
@@ -556,10 +607,59 @@ def submit(request, version_id: str, body: SubmitIn):
 @router.post("/versions/{version_id}/sections", response=StudioSectionCreateOut)
 def add_section(request, version_id: str, body: SectionIn):
     v = _version(request, version_id)
+    module = get_object_or_404(Module, pk=body.module_id, version=v) if body.module_id else None
     s = services.add_section(
-        version=v, title=html.plain(body.title, 200), description=html.plain(body.description, 2000)
-    )
+        version=v, title=html.plain(body.title, 200), description=html.plain(body.description, 2000),
+        module=module,
+    )  # fmt: skip
     return {"id": s.id, "position": s.position}
+
+
+# ---------------------------------------------------------------- program modules (M18)
+def _module(request, module_id) -> Module:
+    m = get_object_or_404(Module.objects.select_related("version__course"), pk=module_id)
+    editable(request, m.version.course_id)
+    return m
+
+
+@router.post("/versions/{version_id}/modules", response=StudioModuleCreateOut)
+def add_module(request, version_id: UUID, body: ModuleIn):
+    m = services.add_module(
+        version=_version(request, version_id), title=body.title, description=body.description
+    )
+    return {"id": m.id, "key": m.module_key, "position": m.position}
+
+
+@router.put("/versions/{version_id}/modules/order", response=OkOut)
+def order_modules(request, version_id: UUID, body: OrderIn):
+    services.reorder_modules(version=_version(request, version_id), ids=body.ids)
+    return {"ok": True}
+
+
+@router.patch("/modules/{module_id}", response=OkOut)
+def update_module(request, module_id: UUID, body: ModulePatch):
+    services.update_module(module=_module(request, module_id), **body.dict(exclude_unset=True))
+    return {"ok": True}
+
+
+@router.delete("/modules/{module_id}", response=OkOut)
+def delete_module(request, module_id: UUID):
+    services.delete_module(module=_module(request, module_id))
+    return {"ok": True}
+
+
+@router.put("/modules/{module_id}/weeks/order", response=OkOut)
+def order_weeks(request, module_id: UUID, body: OrderIn):
+    services.reorder_weeks(module=_module(request, module_id), ids=body.ids)
+    return {"ok": True}
+
+
+@router.put("/sections/{section_id}/module", response=OkOut)
+def move_week(request, section_id: UUID, body: WeekMoveIn):
+    section = _section(request, section_id)
+    module = get_object_or_404(Module, pk=body.module_id, version_id=section.version_id)
+    services.move_week(section=section, module=module)
+    return {"ok": True}
 
 
 @router.put("/versions/{version_id}/sections/order", response=OkOut)

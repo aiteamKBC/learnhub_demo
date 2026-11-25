@@ -5,6 +5,7 @@ from datetime import timedelta
 from uuid import UUID
 
 from django.conf import settings
+from django.db.models import F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Field, Router, Schema
@@ -18,7 +19,7 @@ from core.errors import ServiceError
 from core.money import request_currency
 from core.permissions import OrgRole, org_scope
 
-from . import gateway, services, webhooks
+from . import gateway, programs, services, webhooks
 from .models import (
     Addon,
     CartItem,
@@ -46,6 +47,9 @@ from .schemas import (
     OrderPage,
     PlanEnrollOut,
     PlanPriceOut,
+    ProgramCheckoutIn,
+    ProgramUnlockIn,
+    ProgramUnlockOut,
     RefundIn,
     RefundOut,
     SubscribeOut,
@@ -169,9 +173,31 @@ def checkout(request, body: CheckoutIn):
             "total_minor": order.total_minor, "currency": order.currency_id}  # fmt: skip
 
 
-def _order_out(order: Order) -> dict:
+def _offer_label(item: OrderItem, titles: dict) -> str | None:
+    offer = item.offer
+    if offer is None:
+        return None
+    what = "Whole program" if offer.module_key is None else titles.get(offer.module_key, "One module")
+    return f"{what}, {'live' if offer.mode == 'live' else 'recorded'}"
+
+
+def _module_titles(orders: list[Order]) -> dict:
+    """{module_key: title} for the program modules bought in these orders (one query a page)."""
+    from apps.catalog.models import Module
+
+    keys = {i.offer.module_key for o in orders for i in o.items.all() if i.offer_id and i.offer.module_key}
+    if not keys:
+        return {}
+    live = Module.objects.filter(module_key__in=keys, version__course__live_version=F("version"))
+    return dict(live.values_list("module_key", "title"))
+
+
+def _order_out(order: Order, titles: dict | None = None) -> dict:
     window = timedelta(days=services.refund_window_days())
-    open_window = order.paid_at is not None and timezone.now() - order.paid_at < window
+    plan = getattr(order, "instalment_plan", None)
+    open_window = order.paid_at is not None and timezone.now() - order.paid_at < window and plan is None
+    items = list(order.items.all())
+    titles = _module_titles([order]) if titles is None else titles
     return {
         "id": order.id, "status": order.status, "currency": order.currency_id, "exponent": order.currency.exponent,
         "subtotal_minor": order.subtotal_minor, "discount_minor": order.discount_minor,
@@ -179,11 +205,30 @@ def _order_out(order: Order) -> dict:
         "items": [
             {"id": i.id, "course_id": i.course_id, "course_title": i.course.title, "course_slug": i.course.slug,
              "gross_minor": i.gross_minor,
-             "refunded_at": i.refunded_at,
+             "refunded_at": i.refunded_at, "offer_label": _offer_label(i, titles),
              "refundable": open_window and i.refunded_at is None and order.status in ("paid", "partially_refunded")}
-            for i in order.items.all()
+            for i in items
         ],
+        "instalments": programs.plan_out(plan),
     }  # fmt: skip
+
+
+# ---------------------------------------------------------------- programs (M21)
+@router.post("/programs/checkout", response=CheckoutOut, auth=session_auth)
+def program_checkout(request, body: ProgramCheckoutIn):
+    """Buy a program or one module, live (with an intake) or recorded, in full or monthly."""
+    result = programs.checkout(user=request.user, offer_id=body.offer_id, currency=body.currency.upper(),
+                               cohort_id=body.cohort_id, instalments=body.instalments)  # fmt: skip
+    order = result["order"]
+    return {"order_id": order.id, "status": order.status, "checkout_url": result["checkout_url"],
+            "total_minor": order.total_minor, "currency": order.currency_id}  # fmt: skip
+
+
+@router.post("/programs/unlock-module", response=ProgramUnlockOut, auth=session_auth)
+def program_unlock_module(request, body: ProgramUnlockIn):
+    """A recorded module paid with tokens (D6)."""
+    e = programs.unlock_module(user=request.user, offer_id=body.offer_id, request=request)
+    return {"enrollment_id": e.id}
 
 
 @router.get("/orders", response=OrderPage, auth=session_auth)
@@ -192,8 +237,8 @@ def orders(request, cursor: str | None = None, limit: int = 20):
     qs = (
         Order.objects.filter(user=request.user, org__isnull=True)
         .exclude(status__in=["pending", "expired", "failed"])
-        .select_related("currency")
-        .prefetch_related("items__course")
+        .select_related("currency", "instalment_plan")
+        .prefetch_related("items__course", "items__offer")
         .order_by("-id")
     )
     after = keyset.decode(cursor, 1)
@@ -201,8 +246,9 @@ def orders(request, cursor: str | None = None, limit: int = 20):
         qs = qs.filter(id__lt=after[0])
     rows = list(qs[: limit + 1])
     page = rows[:limit]
+    titles = _module_titles(page)
     return {
-        "items": [_order_out(o) for o in page],
+        "items": [_order_out(o, titles) for o in page],
         "next_cursor": keyset.encode(page[-1].id) if len(rows) > limit else None,
     }
 
@@ -210,7 +256,9 @@ def orders(request, cursor: str | None = None, limit: int = 20):
 @router.get("/orders/{order_id}", response=OrderOut, auth=session_auth)
 def order(request, order_id: str):
     """Polled by the 'thank you' page until the payment webhook marks the order paid."""
-    qs = Order.objects.select_related("currency").prefetch_related("items__course")
+    qs = Order.objects.select_related("currency", "instalment_plan").prefetch_related(
+        "items__course", "items__offer"
+    )
     o = get_object_or_404(qs, pk=order_id, user=request.user)
     if services.sync_order_from_stripe(o):  # paid, but the webhook hasn't arrived yet
         o = qs.get(pk=o.pk)

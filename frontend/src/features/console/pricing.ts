@@ -79,7 +79,7 @@ function usePriceInvalidate() {
   }
 }
 
-function useWrite<T>(fn: (v: T) => Promise<unknown>) {
+function useWrite<T, R = unknown>(fn: (v: T) => Promise<R>) {
   const done = usePriceInvalidate()
   return useMutation({ mutationFn: fn, onSuccess: done })
 }

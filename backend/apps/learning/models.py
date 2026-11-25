@@ -33,6 +33,17 @@ def certificate_code() -> str:
     return f"LH-{raw[:4]}-{raw[4:8]}-{raw[8:]}"
 
 
+def holds_place() -> Q:
+    """An enrolment that holds a place in a cohort group: active or completed, and its
+    access hasn't run out (a cancelled monthly plan or a pause gives the place back). The
+    SQL twin is learning.cohort_seat_counts (migration 0016)."""
+    from django.utils import timezone
+
+    return Q(status__in=("active", "completed")) & (
+        Q(access_expires_at__isnull=True) | Q(access_expires_at__gt=timezone.now())
+    )
+
+
 class Enrollment(MixedTenantModel):
     class Source(models.TextChoices):
         PURCHASE = "purchase", "Purchased"
@@ -48,6 +59,10 @@ class Enrollment(MixedTenantModel):
         REVOKED = "revoked", "Revoked"  # refund, removal
         SUPERSEDED = "superseded", "Superseded"  # kept as evidence; a renewal retake replaced it
 
+    class Scope(models.TextChoices):
+        PROGRAM = "program", "Whole program"
+        MODULES = "modules", "Chosen modules"
+
     course = models.ForeignKey("catalog.Course", on_delete=models.PROTECT, related_name="enrollments")
     source = models.CharField(max_length=16, choices=Source.choices)
     source_ref = models.UUIDField(null=True, blank=True)  # order item / subscription / assignment id
@@ -61,6 +76,19 @@ class Enrollment(MixedTenantModel):
     completed_version = models.ForeignKey(
         "catalog.CourseVersion", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
     )  # exactly what was completed (compliance evidence)
+    # Programs (M18): where this learner is taught. Both NULL for short courses and for
+    # self-paced (recorded) program learners. The group always belongs to the cohort
+    # (checked in apps.delivery.services.place_learner).
+    cohort = models.ForeignKey(
+        "delivery.Cohort", on_delete=models.PROTECT, null=True, blank=True, related_name="+", db_index=False
+    )
+    group = models.ForeignKey(
+        "delivery.Group", on_delete=models.PROTECT, null=True, blank=True, related_name="+", db_index=False
+    )
+    # Programs (M21): `program` = every module; `modules` = only the EnrollmentModule rows
+    scope = models.CharField(
+        max_length=8, choices=Scope.choices, default=Scope.PROGRAM, db_default=Scope.PROGRAM
+    )
 
     class Meta:
         db_table = table(SCHEMA, "enrollments")
@@ -84,6 +112,10 @@ class Enrollment(MixedTenantModel):
             models.Index(fields=["user", "-last_accessed_at"], name="ix_enrol_my_learning"),
             models.Index(fields=["org", "course", "status"], name="ix_enrol_org_course"),
             models.Index(fields=["course", "status"], name="ix_enrol_course"),
+            models.Index(fields=["group", "status"], name="ix_enrol_group", condition=Q(group__isnull=False)),
+            models.Index(
+                fields=["cohort", "status"], name="ix_enrol_cohort", condition=Q(cohort__isnull=False)
+            ),
         ]
 
 
@@ -253,4 +285,150 @@ class Certificate(MixedTenantModel):
         indexes = [
             models.Index(fields=["user", "-issued_at"], name="ix_certs_user"),
             models.Index(fields=["org", "course", "issued_at"], name="ix_certs_org_course"),
+        ]
+
+
+# ---------------------------------------------------------------- programs (M19)
+class OtjEntry(MixedTenantModel):
+    """The ONE off-the-job hours ledger (plan D14, lesson 6). Every row names its source and
+    reference, unique per enrolment, so nothing is ever counted twice. org_id and user_id
+    are copied from the enrolment by trigger (core.rls.inherit_parent)."""
+
+    class Source(models.TextChoices):
+        COMPONENT = "component", "Component completed"
+        LIVE_SESSION = "live_session", "Live session"
+        WORKSHOP = "workshop", "Workshop"
+        MANUAL = "manual", "Logged by the learner"
+
+    class Status(models.TextChoices):
+        AUTO_APPROVED = "auto_approved", "Counted automatically"
+        PENDING = "pending", "Waiting for approval"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Not approved"
+
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="otj_entries")
+    source = models.CharField(max_length=20, choices=Source.choices)
+    source_ref = models.CharField(max_length=64)  # lecture_key, session id, workshop id, or a new id
+    minutes = models.PositiveIntegerField()
+    occurred_on = models.DateField()
+    status = models.CharField(max_length=20, choices=Status.choices)
+    note = models.CharField(max_length=1000, blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        db_table = table(SCHEMA, "otj_entries")
+        constraints = [
+            models.UniqueConstraint(fields=["enrollment", "source", "source_ref"], name="uq_otj_source"),
+            models.CheckConstraint(condition=Q(minutes__gt=0, minutes__lte=1440), name="ck_otj_minutes"),
+        ]
+        indexes = [
+            models.Index(fields=["enrollment", "-occurred_on"], name="ix_otj_enrollment"),
+            models.Index(
+                fields=["status", "created_at"], name="ix_otj_pending", condition=Q(status="pending")
+            ),
+        ]
+
+
+class ModuleCertificate(MixedTenantModel):
+    """Proof a learner finished one program module (plan D25). The program certificate is
+    the existing Certificate, issued when the whole program completes."""
+
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.PROTECT, related_name="module_certificates")
+    module_key = models.UUIDField()
+    module_title = models.CharField(max_length=200)
+    recipient_name = models.CharField(max_length=200)
+    cpd_min = models.PositiveIntegerField(default=0)
+    verification_code = models.CharField(max_length=20, unique=True, default=certificate_code)
+    issued_at = models.DateTimeField()
+
+    class Meta:
+        db_table = table(SCHEMA, "module_certificates")
+        constraints = [
+            models.UniqueConstraint(fields=["enrollment", "module_key"], name="uq_module_certificate")
+        ]
+        indexes = [models.Index(fields=["user", "-issued_at"], name="ix_module_certs_user")]
+
+
+# ---------------------------------------------------------------- live attendance (M20)
+class SessionAttendance(MixedTenantModel):
+    """Minutes a learner spent in one group session: from the Teams attendance report or
+    marked by staff. Present ones feed the OTJ ledger (source live_session). org_id and
+    user_id are copied from the enrolment by trigger."""
+
+    class Source(models.TextChoices):
+        GRAPH = "graph", "Teams attendance report"
+        MANUAL = "manual", "Marked by staff"
+
+    session = models.ForeignKey("delivery.LiveSession", on_delete=models.PROTECT, related_name="attendance")
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="+")
+    minutes = models.PositiveIntegerField(default=0)  # 0 = absent
+    first_join = models.DateTimeField(null=True, blank=True)
+    last_leave = models.DateTimeField(null=True, blank=True)
+    source = models.CharField(max_length=8, choices=Source.choices)
+    marked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        db_table = table(SCHEMA, "session_attendance")
+        constraints = [
+            models.UniqueConstraint(fields=["session", "enrollment"], name="uq_session_attendance"),
+            models.CheckConstraint(condition=Q(minutes__lte=1440), name="ck_session_att_minutes"),
+        ]
+        indexes = [models.Index(fields=["enrollment"], name="ix_session_att_enrollment")]
+
+
+class WorkshopBooking(MixedTenantModel):
+    """A learner's place at a workshop, and whether they attended."""
+
+    class Status(models.TextChoices):
+        BOOKED = "booked", "Booked"
+        CANCELLED = "cancelled", "Cancelled"
+
+    workshop = models.ForeignKey("delivery.Workshop", on_delete=models.PROTECT, related_name="bookings")
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="+")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.BOOKED)
+    attended_min = models.PositiveIntegerField(null=True, blank=True)  # NULL = not marked yet, 0 = absent
+    source = models.CharField(max_length=8, choices=SessionAttendance.Source.choices, blank=True)
+    marked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        db_table = table(SCHEMA, "workshop_bookings")
+        constraints = [
+            models.UniqueConstraint(fields=["workshop", "enrollment"], name="uq_workshop_booking"),
+            models.CheckConstraint(
+                condition=Q(attended_min__isnull=True) | Q(attended_min__lte=1440), name="ck_booking_minutes"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["workshop", "status"], name="ix_bookings_workshop"),
+            models.Index(fields=["enrollment"], name="ix_bookings_enrollment"),
+        ]
+
+
+class EnrollmentModule(MixedTenantModel):
+    """A program module a learner bought on its own (M21, D10): the player opens only these
+    when the enrolment's scope is `modules`. Kept as history when the whole program is bought."""
+
+    class Source(models.TextChoices):
+        PURCHASE = "purchase", "Bought"
+        TOKENS = "tokens", "Unlocked with tokens"
+        ADMIN_GRANT = "admin_grant", "Granted by staff"
+        SEAT = "seat", "Company seat"
+
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="modules")
+    module_key = models.UUIDField()
+    source = models.CharField(max_length=12, choices=Source.choices)
+    source_ref = models.UUIDField(null=True, blank=True)  # order item or token spend
+
+    class Meta:
+        db_table = table(SCHEMA, "enrollment_modules")
+        constraints = [
+            models.UniqueConstraint(fields=["enrollment", "module_key"], name="uq_enrollment_module"),
         ]

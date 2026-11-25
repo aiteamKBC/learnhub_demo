@@ -144,9 +144,9 @@ export function CoursesPage() {
       <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <div className="animate-reveal">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{filters.q ? `Results for “${filters.q}”` : 'Explore courses'}</h1>
-          <p className="mt-1 text-sm text-muted" aria-live="polite">
+          <div className="mt-1 text-sm text-muted" aria-live="polite">
             {total == null ? <Skeleton className="inline-block h-4 w-32 align-middle" /> : `${total.toLocaleString('en-GB')} ${total === 1 ? 'course' : 'courses'}`}
-          </p>
+          </div>
         </div>
 
         <div className="mt-6 lg:grid lg:grid-cols-[248px_1fr] lg:gap-8">

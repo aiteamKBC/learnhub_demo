@@ -1,4 +1,4 @@
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api, unwrap } from '@/api/client'
 import type { components } from '@/api/schema'
@@ -227,9 +227,16 @@ export function worstStatus(statuses: string[]): StatusKey | null {
 }
 
 /** The learner's required training in one company (each company is asked separately). */
+const myRequirements = (orgId: string) => ({
+  queryKey: ['my-requirements', orgId],
+  queryFn: () => unwrap(api.GET('/api/v1/compliance/my', { headers: { 'X-Org-Id': orgId } })),
+})
+
 export function useMyRequirements(orgId: string) {
-  return useQuery({
-    queryKey: ['my-requirements', orgId],
-    queryFn: () => unwrap(api.GET('/api/v1/compliance/my', { headers: { 'X-Org-Id': orgId } })),
-  })
+  return useQuery(myRequirements(orgId))
+}
+
+/** The learner's requirements across every company they belong to (same cache as useMyRequirements). */
+export function useMyRequirementsAll(orgIds: string[]) {
+  return useQueries({ queries: orgIds.map(myRequirements) })
 }

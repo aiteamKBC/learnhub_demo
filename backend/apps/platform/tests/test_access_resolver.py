@@ -20,6 +20,7 @@ from django.utils import timezone
 
 from apps.catalog import services as cat
 from apps.catalog.models import VideoLibrary
+from apps.commerce.models import CoursePrice
 from apps.identity.models import User
 from apps.learning.models import Enrollment
 from apps.org import services as org_services
@@ -57,6 +58,7 @@ class AccessBase(SchemaTransactionTestCase):
                 section=sec, kind="article", title="Preview", body="free", is_preview=True
             ),
         }
+        CoursePrice.objects.create(course=course, is_free=True, tier=None)  # the checklist needs a price
         cat.submit(version=v, by=self.staff)  # platform ownership publishes on submit
         course.refresh_from_db()
         return course, lectures

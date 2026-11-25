@@ -13,12 +13,15 @@ TRUNCATE_SCHEMAS = [
     "identity",
     "org",
     "catalog",
+    "delivery",
     "learning",
     "compliance",
     "commerce",
     "payouts",
     "engagement",
     "platform",
+    "integrations",
+    "inclusion",
 ]
 # Reference data loaded by migrations survives between tests
 KEEP = {

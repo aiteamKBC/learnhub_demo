@@ -353,8 +353,9 @@ def _library(org_id):
     if business:
         rule |= Q(owner_org_id__isnull=True, in_business=True)
     return Course.objects.filter(
-        rule, status="published", live_version__isnull=False, deleted_at__isnull=True
-    )
+        rule, status="published", live_version__isnull=False, deleted_at__isnull=True,
+        kind__in=Course.SELLABLE_KINDS,
+    )  # fmt: skip
 
 
 @router.get("/library", response=list[LibraryCourse])

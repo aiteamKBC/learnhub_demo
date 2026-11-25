@@ -12,12 +12,13 @@ All functions expect to run inside a request (or core.tenancy.tenant_context), s
 RLS applies; company-private content is only writable inside its company.
 """
 
+import uuid
 from contextlib import contextmanager
 from functools import wraps
 from uuid import UUID
 
 from django.db import connection, transaction
-from django.db.models import Max, Sum
+from django.db.models import Count, Max, Sum
 from django.utils import timezone
 
 from core import html
@@ -33,6 +34,7 @@ from .models import (
     Lecture,
     LectureResource,
     MediaAsset,
+    Module,
     Quiz,
     QuizOption,
     QuizQuestion,
@@ -106,13 +108,131 @@ def _editable(version: CourseVersion) -> None:
 
 
 # ---------------------------------------------------------------- curriculum
+def _is_program(version: CourseVersion) -> bool:
+    return version.course.kind == Course.Kind.PROGRAM
+
+
 @authored
-def add_section(*, version: CourseVersion, title: str, description: str = "") -> Section:
+def add_section(
+    *, version: CourseVersion, title: str, description: str = "", module: Module | None = None
+) -> Section:
+    """A section, or a program WEEK (then `module` is required and the week goes last in it)."""
     _editable(version)
+    program = _is_program(version)
+    if program and module is None:
+        raise ServiceError("missing_module", "Add the week inside a module.")
+    if not program and module is not None:
+        raise ServiceError("not_program", "Only programs have modules.")
+    if module is not None and module.version_id != version.id:
+        raise ServiceError("not_found", "Module not found.", status=404)
+    if program:
+        _lock_version(version)
     last = version.sections.aggregate(m=Max("position"))["m"]
-    return Section.objects.create(
-        version=version, title=title, description=description, position=(last or 0) + 1
+    section = Section.objects.create(
+        version=version, module=module, title=title, description=description, position=(last or 0) + 1
     )
+    if program:
+        _renumber_weeks(version)
+        section.refresh_from_db(fields=["position"])
+    return section
+
+
+# ---------------------------------------------------------------- program modules (M18)
+def _renumber_weeks(version: CourseVersion) -> None:
+    """Keep ONE section order across the version: module order, then week order inside
+    the module. Every reader that sorts by section position (player, progress, prev/next)
+    then works for programs unchanged. One statement; rows already right are untouched."""
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE catalog.sections AS s SET position = r.rn
+            FROM (
+                SELECT s2.id, row_number() OVER (ORDER BY m.position, s2.position, s2.id) AS rn
+                FROM catalog.sections s2 JOIN catalog.modules m ON m.id = s2.module_id
+                WHERE s2.version_id = %s
+            ) AS r
+            WHERE s.id = r.id AND s.position <> r.rn
+            """,
+            [str(version.id)],
+        )
+
+
+def _lock_version(version: CourseVersion) -> None:
+    """Row lock on the version: module and week changes (Max+1 positions, renumbering)
+    then run one at a time per program, so a double submit can't give two modules the
+    same position or interleave their weeks."""
+    list(CourseVersion.objects.select_for_update().filter(pk=version.pk).values_list("pk"))
+
+
+def _program_version(version: CourseVersion) -> None:
+    """Every module and week change: editable, a program, and serialised (see above)."""
+    _editable(version)
+    if not _is_program(version):
+        raise ServiceError("not_program", "Only programs have modules.")
+    _lock_version(version)
+
+
+@authored
+def add_module(*, version: CourseVersion, title: str, description: str = "") -> Module:
+    _program_version(version)
+    title = html.plain(title, 200).strip()
+    if not title:
+        raise ServiceError("missing_title", "Give the module a title.")
+    last = version.modules.aggregate(m=Max("position"))["m"]
+    return Module.objects.create(
+        version=version, module_key=uuid.uuid4(), title=title,
+        description=html.plain(description, 4000), position=(last or 0) + 1,
+    )  # fmt: skip
+
+
+@authored
+def update_module(*, module: Module, title: str | None = None, description: str | None = None) -> Module:
+    _program_version(module.version)
+    if title is not None:
+        module.title = html.plain(title, 200).strip() or module.title
+    if description is not None:
+        module.description = html.plain(description, 4000)
+    module.save(update_fields=["title", "description", "updated_at"])
+    return module
+
+
+@authored
+def delete_module(*, module: Module) -> None:
+    _program_version(module.version)
+    if module.weeks.exists():
+        raise ServiceError("not_empty", "Move or delete the weeks in this module first.")
+    module.delete()
+
+
+@authored
+def reorder_modules(*, version: CourseVersion, ids: list) -> None:
+    _program_version(version)
+    _reorder(Module, ids, version=version)
+    _renumber_weeks(version)
+
+
+@authored
+def reorder_weeks(*, module: Module, ids: list) -> None:
+    """New week order inside one module."""
+    _program_version(module.version)
+    _reorder(Section, ids, version=module.version, module=module)
+    _renumber_weeks(module.version)
+
+
+@authored
+def move_week(*, section: Section, module: Module) -> Section:
+    """Move a week to the end of another module of the same version."""
+    _program_version(section.version)
+    if module.version_id != section.version_id:
+        raise ServiceError("not_found", "Module not found.", status=404)
+    if section.module_id != module.id:
+        last = module.weeks.aggregate(m=Max("position"))["m"]
+        section.module = module
+        section.position = (last or 0) + 100_000  # after every week of the target; renumbered next
+        section.save(update_fields=["module", "position", "updated_at"])
+        _renumber_weeks(section.version)
+        section.refresh_from_db(fields=["position"])
+    return section
 
 
 @authored
@@ -161,9 +281,13 @@ def add_question(
 
 
 # ---------------------------------------------------------------- publish checklist
-def publish_checklist(version: CourseVersion) -> list[str]:
+_UNKNOWN = object()
+
+
+def publish_checklist(version: CourseVersion, *, cash_price=_UNKNOWN) -> list[str]:
     """Problems blocking publication (the builder's completion checklist, screen 21).
-    Empty list = ready."""
+    Empty list = ready. A caller that already loaded the course's CoursePrice (or knows
+    there is none) passes it as `cash_price` to save the query."""
     problems: list[str] = []
     # one query per level, whatever the course size
     lectures = list(
@@ -171,8 +295,16 @@ def publish_checklist(version: CourseVersion) -> list[str]:
             "quiz__questions__options"
         )
     )
+    program = version.course.kind == Course.Kind.PROGRAM
     if not lectures:
-        problems.append("Add at least one lecture.")
+        problems.append("Add at least one component." if program else "Add at least one lecture.")
+    if program:  # live sessions get their dates from each group's timetable, not the content
+        modules = list(version.modules.annotate(n=Count("weeks")).order_by("position"))
+        if not modules:
+            problems.append("Add at least one module.")
+        problems.extend(f"Module '{m.title}' has no weeks." for m in modules if not m.n)
+        if version.sections.filter(module__isnull=True).exists():
+            problems.append("Every week must be inside a module.")
     order = _course_order(version)
     for lec in lectures:
         where = f"'{lec.title}'"
@@ -190,7 +322,7 @@ def publish_checklist(version: CourseVersion) -> list[str]:
             problems.append(f"Reading {where} is empty.")
         elif lec.kind == Lecture.Kind.ASSIGNMENT and not lec.assignment.instructions.strip():
             problems.append(f"Assignment {where} has no instructions.")
-        elif lec.kind == Lecture.Kind.LIVE_SESSION and not lec.live_starts_at:
+        elif lec.kind == Lecture.Kind.LIVE_SESSION and not lec.live_starts_at and not program:
             problems.append(f"Live session {where} has no start time.")
         elif lec.kind == Lecture.Kind.QUIZ:
             questions = sorted(lec.quiz.questions.all(), key=lambda q: q.position)
@@ -216,10 +348,14 @@ def publish_checklist(version: CourseVersion) -> list[str]:
     # protected lesson. This keeps incomplete monetisation out of both direct publishing
     # and the instructor review queue.
     course = version.course
-    if course.ownership in (Course.Ownership.PLATFORM, Course.Ownership.INSTRUCTOR):
+    if course.kind in Course.SELLABLE_KINDS and course.ownership in (
+        Course.Ownership.PLATFORM,
+        Course.Ownership.INSTRUCTOR,
+    ):  # programs aren't sold until M21, so they need no price yet
         from apps.commerce.models import CoursePrice
 
-        cash_price = CoursePrice.objects.filter(course=course).only("is_free").first()
+        if cash_price is _UNKNOWN:
+            cash_price = CoursePrice.objects.filter(course=course).only("is_free").first()
         if cash_price is None:
             problems.append("Set a course price, or make the course free.")
         elif not cash_price.is_free and not course.full_course_token_price:
@@ -266,11 +402,22 @@ def create_draft(*, course: Course, by) -> CourseVersion:
 
 def _copy_content(source: CourseVersion, draft: CourseVersion) -> None:
     """Copy a version's curriculum into an empty draft (lecture keys kept)."""
+    module_map = {
+        m.id: Module.objects.create(
+            version=draft,
+            module_key=m.module_key,
+            title=m.title,
+            description=m.description,
+            position=m.position,
+        )
+        for m in source.modules.all()
+    }
     section_map = {}
     for sec in source.sections.all():
         section_map[sec.id] = Section.objects.create(
-            version=draft, title=sec.title, description=sec.description, position=sec.position
-        )
+            version=draft, module=module_map.get(sec.module_id), title=sec.title,
+            description=sec.description, position=sec.position,
+        )  # fmt: skip
     copy_fields = [
         "prerequisite_key",
         "kind",
@@ -287,6 +434,8 @@ def _copy_content(source: CourseVersion, draft: CourseVersion) -> None:
         "live_join_url",
         "min_watch_pct",
         "lecture_key",
+        "expected_otj_min",
+        "cpd_min",
     ]
     for lec in source.lectures.select_related("quiz", "assignment").prefetch_related("resources"):
         new_lec = Lecture.objects.create(
@@ -465,6 +614,13 @@ def _publish(version: CourseVersion) -> CourseVersion:
     if course.status == Course.Status.DRAFT:
         course.status, course.published_at = Course.Status.PUBLISHED, now
     course.save()
+    if course.kind == Course.Kind.PROGRAM:
+        # the new version may have more or fewer weeks: store each cohort's new end date.
+        # The dated schedule itself is keyed by the live version, so it is already right.
+        from apps.delivery.tasks import refresh_cohort_end_dates
+
+        program_id = str(course.id)
+        transaction.on_commit(lambda: refresh_cohort_end_dates.delay(program_id), robust=True)
     return version
 
 
@@ -532,6 +688,8 @@ def _reorder(model, ids: list, **scope) -> None:
 @authored
 def reorder_sections(*, version: CourseVersion, ids: list) -> None:
     _editable(version)
+    if _is_program(version):
+        raise ServiceError("use_modules", "Reorder weeks inside their module.")
     _reorder(Section, ids, version=version)
 
 
@@ -582,7 +740,7 @@ def _check_prerequisite(lecture: Lecture, key) -> None:
 
 LECTURE_FIELDS = {"title", "body", "is_preview", "is_required", "token_price", "duration_sec", "external_url", "live_starts_at",
                   "live_duration_min", "live_join_url", "live_provider", "teams_meeting_id", "teams_organizer", "min_watch_pct", "video_id", "section_id",
-                  "prerequisite_key"}  # fmt: skip
+                  "prerequisite_key", "expected_otj_min", "cpd_min"}  # fmt: skip
 
 
 @authored

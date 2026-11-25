@@ -1,7 +1,6 @@
 import { ArrowLeft, Coins, Crown, Mail, MapPin, Package, Phone, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-
+import { useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -9,14 +8,17 @@ import { Card, CardBody } from '@/components/ui/card'
 import { Input, NativeSelect } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/misc'
 import {
+  useMoney,
   usePackCheckout,
   usePackageCheckout,
   useSubscriptionCheckout,
   useTopUpCheckout,
+  useWalletBalance,
 } from '@/features/b2c/api'
 import { useMe, useUpdateMe } from '@/features/identity/auth'
-import { count, money } from '@/lib/format'
 import { COUNTRIES } from '@/lib/countries'
+import { count } from '@/lib/format'
+import { Link, useNavigate } from '@/lib/router'
 
 // ------------------------------------------------------------------ types
 
@@ -47,8 +49,10 @@ export function CheckoutReviewPage() {
           title="Review your purchase"
           description="Check the details and confirm to proceed to payment."
           back={
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeft className="mr-1 size-4" /> Back
+            <Button variant="ghost" size="sm" asChild>
+              <Link to={item.cancelPath}>
+                <ArrowLeft className="mr-1 size-4" /> Back
+              </Link>
             </Button>
           }
         />
@@ -64,6 +68,7 @@ export function CheckoutReviewPage() {
 // ------------------------------------------------------------------ item summary card
 
 function ItemSummary({ item }: { item: ReviewItem }) {
+  const fmt = useMoney()
   const icon =
     item.kind === 'pack' || item.kind === 'topup' ? <Coins className="size-5" /> :
     item.kind === 'package' ? <Package className="size-5" /> :
@@ -91,7 +96,7 @@ function ItemSummary({ item }: { item: ReviewItem }) {
           <p className="font-bold">{title}</p>
           <p className="text-sm text-muted">{subtitle}</p>
         </div>
-        <p className="text-xl font-bold tabular-nums">{money(item.amountMinor, item.currency)}</p>
+        <p className="text-xl font-bold tabular-nums">{fmt(item.amountMinor, item.currency)}</p>
       </CardBody>
     </Card>
   )
@@ -102,6 +107,8 @@ function ItemSummary({ item }: { item: ReviewItem }) {
 function BuyerForm({ item }: { item: ReviewItem }) {
   const { data: me } = useMe()
   const updateMe = useUpdateMe()
+  const fmt = useMoney()
+  const wallet = useWalletBalance({ enabled: item.kind === 'pack' || item.kind === 'topup' })
 
   const packCheckout = usePackCheckout()
   const topUpCheckout = useTopUpCheckout()
@@ -127,10 +134,14 @@ function BuyerForm({ item }: { item: ReviewItem }) {
   const countryValid = countryCode.length === 2
   const canSubmit = emailValid && phoneValid && countryValid && !submitting
 
-  /** Remember pre-checkout balance so the result page can detect when tokens land. */
-  const rememberBalance = () => {
+  /** Remember the real pre-checkout balance: the result page says "Tokens added" only once
+   * the balance rises above it. Without a known balance it stores nothing and the result
+   * page only points to the wallet, never claiming a credit it cannot see. */
+  const rememberBalance = async () => {
+    const before = (await wallet.refetch()).data?.balance // fresh, not a cached figure
     try {
-      sessionStorage.setItem('b2c-token-baseline', '0')
+      if (before == null) sessionStorage.removeItem('b2c-token-baseline')
+      else sessionStorage.setItem('b2c-token-baseline', String(before))
     } catch { /* private mode */ }
   }
 
@@ -156,7 +167,7 @@ function BuyerForm({ item }: { item: ReviewItem }) {
 
     try {
       if (item.kind === 'pack') {
-        rememberBalance()
+        await rememberBalance()
         const r = await packCheckout.mutateAsync({
           packId: item.packId,
           successPath: item.successPath,
@@ -165,7 +176,7 @@ function BuyerForm({ item }: { item: ReviewItem }) {
         })
         onSuccess(r)
       } else if (item.kind === 'topup') {
-        rememberBalance()
+        await rememberBalance()
         const r = await topUpCheckout.mutateAsync({
           amountMinor: item.amountMinor,
           currency: item.currency,
@@ -227,7 +238,7 @@ function BuyerForm({ item }: { item: ReviewItem }) {
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+20 1xx xxx xxxx"
+            placeholder="+44 7700 900123"
             className="mt-1"
             aria-label="Phone number"
           />
@@ -252,7 +263,7 @@ function BuyerForm({ item }: { item: ReviewItem }) {
         </label>
 
         <Button className="w-full" size="lg" disabled={!canSubmit} loading={submitting} onClick={confirm}>
-          Confirm &amp; pay {money(item.amountMinor, item.currency)}
+          Confirm &amp; pay {fmt(item.amountMinor, item.currency)}
         </Button>
 
         <p className="text-center text-xs text-muted">

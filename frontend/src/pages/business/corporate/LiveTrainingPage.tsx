@@ -324,11 +324,11 @@ export function LiveTrainingPage() {
       { replace: true },
     )
   useEffect(() => {
-    document.title = 'Live training · LearnHub'
+    document.title = 'Short-course live training · LearnHub'
   }, [])
   return (
     <>
-      <PageHeader title="Live training" description="Group sessions led by a tutor. You pay once the dates are confirmed." />
+      <PageHeader title="Short-course live training" description="Group sessions led by a tutor. You pay once the dates are confirmed." />
       <div className="grid gap-6">
         {back ? <PaymentNotice pending={q.data?.some((b) => b.status === 'pending_pay') ?? true} /> : null}
         <Card>

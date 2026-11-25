@@ -117,6 +117,8 @@ class StudioEditorLectureOut(Schema):
     teams_meeting_id: str = ""
     teams_organizer: str = ""
     min_watch_pct: int
+    expected_otj_min: int = 0
+    cpd_min: int = 0
     prerequisite_key: UUID | None = None  # an earlier lesson learners must finish first
     resources: list[StudioEditorResourceOut]
     video: StudioEditorVideoOut | None = None
@@ -129,7 +131,16 @@ class StudioEditorSectionOut(Schema):
     title: str
     description: str
     position: int
+    module_id: UUID | None = None  # programs: the week's module
     lectures: list[StudioEditorLectureOut]
+
+
+class StudioEditorModuleOut(Schema):
+    id: UUID
+    module_key: UUID
+    title: str
+    description: str
+    position: int
 
 
 class StudioVersionSummaryOut(Schema):
@@ -146,6 +157,7 @@ class StudioWorkingVersionOut(Schema):
     status: str
     editable: bool
     checklist: list[str]
+    modules: list[StudioEditorModuleOut] = []  # programs only
     sections: list[StudioEditorSectionOut]
 
 
@@ -170,6 +182,7 @@ class StudioCourseDetailOut(Schema):
     thumbnail_url: str
     status: str
     ownership: str
+    kind: str
     cpd_hours: float | None = None
     in_subscription: bool
     in_business: bool
@@ -193,6 +206,12 @@ class StudioDraftOut(Schema):
 
 class StudioSectionCreateOut(Schema):
     id: UUID
+    position: int
+
+
+class StudioModuleCreateOut(Schema):
+    id: UUID
+    key: UUID
     position: int
 
 

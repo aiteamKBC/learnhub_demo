@@ -54,8 +54,10 @@ with tenant_context(user_id=owner.id):
     a = cat.add_lecture(section=s2, kind="assignment", title="Mini project").assignment
     cat.update_assignment(assignment=a, instructions="<p>Describe your API design in a few lines, or share a link.</p>",
                           submission_types=["text", "url"], rubric=[{"criterion": "Clear design", "points": 60}, {"criterion": "Good naming", "points": 40}])
+    # the publish checklist needs a price (or "free") before submission
+    with tenant_context(user_id=staff.id, staff=True):
+        CoursePrice.objects.create(course=c, is_free=True, tier=None)
     cat.submit(version=v, by=owner)
 with tenant_context(user_id=staff.id, staff=True):
     cat.approve(version=v, reviewer=staff)
-    CoursePrice.objects.create(course=c, is_free=True, tier=None)
 print(slug)

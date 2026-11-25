@@ -166,3 +166,20 @@ def delete_video(library, guid: str) -> None:
         client.delete(
             f"{API}/library/{library.bunny_library_id}/videos/{guid}", headers={"AccessKey": _key(library)}
         )
+
+
+def upload_stream(library, guid: str, chunks) -> None:
+    """Server-side upload of a video's bytes (an iterator of chunks), streamed straight
+    through: used by the Celery job that copies a Teams recording (M20). Never call it in
+    a web request."""
+    try:
+        with httpx.Client(timeout=httpx.Timeout(600, connect=10)) as client:
+            r = client.put(
+                f"{API}/library/{library.bunny_library_id}/videos/{guid}",
+                headers={"AccessKey": _key(library), "Content-Type": "application/octet-stream"},
+                content=chunks,
+            )
+    except httpx.HTTPError as exc:
+        raise ServiceError("video_unreachable", "We couldn't reach the video service.", status=503) from exc
+    if r.status_code >= 400:
+        raise ServiceError("video_unavailable", "The video service did not accept the upload.", status=502)

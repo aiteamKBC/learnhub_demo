@@ -47,3 +47,8 @@ def _invite_delay(email, org_name, inviter, token):
 
 
 org_tasks.send_invite_task.delay = _invite_delay
+
+# M17: the Breathe HR client talks to a local fake (tools/harness/fake_breathe.py), never to Breathe.
+import fake_breathe  # noqa: E402
+
+fake_breathe.install()

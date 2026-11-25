@@ -98,7 +98,17 @@ class Course(OwnedContent):
         ADVANCED = "advanced", "Advanced"
         ALL = "all", "All levels"
 
+    class Kind(models.TextChoices):
+        SHORT = "short", "Short course"  # the marketplace course: Section -> Lecture
+        PROGRAM = "program", "Program"  # Module -> Week (Section) -> Component (Lecture), run in cohorts
+
     ownership = models.CharField(max_length=16, choices=Ownership.choices)
+    # Programs are not sold, listed or assigned until M21/M22 (user decision 2026-11-16):
+    # every catalogue, checkout, plan, token, package and business-library query filters on
+    # this. Learners join a program only through staff placing them in a group.
+    SELLABLE_KINDS = ("short",)
+
+    kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.SHORT)  # fixed at creation
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
     category = models.ForeignKey(
@@ -247,8 +257,41 @@ class CourseVersion(OwnedContent):
         indexes = [models.Index(fields=["status", "submitted_at"], name="ix_versions_review_queue")]
 
 
+class Module(OwnedContent):
+    """A program's top level (programs only). Shown as "Module"; its sections are the
+    program's weeks. `module_key` stays the same in every version, like lecture_key, so
+    cohort schedules (delivery.CohortModule) survive republishing."""
+
+    version = models.ForeignKey(CourseVersion, on_delete=models.CASCADE, related_name="modules")
+    module_key = models.UUIDField()
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, max_length=4000)  # plain text
+    position = models.PositiveIntegerField()
+
+    class Meta:
+        db_table = table(SCHEMA, "modules")
+        constraints = [
+            models.UniqueConstraint(fields=["version", "module_key"], name="uq_module_key_per_version"),
+            # deferred: a reorder rewrites every position in one statement
+            models.UniqueConstraint(
+                fields=["version", "position"],
+                name="uq_module_position",
+                deferrable=models.Deferrable.DEFERRED,
+            ),
+        ]
+        indexes = [models.Index(fields=["version", "position"], name="ix_modules_version")]
+
+    def __str__(self) -> str:
+        return self.title
+
+
 class Section(OwnedContent):
+    """A short course's section, or a program's WEEK (then `module` is set).
+    `position` is one order across the whole version (module order, then week order),
+    so every reader that sorts by section position keeps working for programs."""
+
     version = models.ForeignKey(CourseVersion, on_delete=models.CASCADE, related_name="sections")
+    module = models.ForeignKey(Module, on_delete=models.RESTRICT, null=True, blank=True, related_name="weeks")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, max_length=2000)
     position = models.PositiveIntegerField()
@@ -306,6 +349,10 @@ class Lecture(OwnedContent):
     token_price = models.PositiveIntegerField(null=True, blank=True)
     is_free_preview = models.BooleanField(default=False)
     excluded_from_subscription = models.BooleanField(default=False)
+    # M19, program components: expected off-the-job minutes (an automatic OTJ entry on
+    # completion) and CPD minutes (rolled up to week, module and program).
+    expected_otj_min = models.PositiveIntegerField(default=0, validators=[MaxValueValidator(6000)])
+    cpd_min = models.PositiveIntegerField(default=0, validators=[MaxValueValidator(6000)])
 
     class Meta:
         db_table = table(SCHEMA, "lectures")
@@ -603,6 +650,63 @@ class LearningPathItem(OwnedContent):
         db_table = table(SCHEMA, "learning_path_items")
         constraints = [models.UniqueConstraint(fields=["path", "course"], name="uq_path_course")]
         indexes = [models.Index(fields=["path", "position"], name="ix_path_items_order")]
+
+
+# ---------------------------------------------------------------- KSBs (M19, plan D12-D13)
+class KsbStandard(BaseModel):
+    """A set of Knowledge, Skills and Behaviours: an imported apprenticeship standard
+    (Skills England), or a custom set the provider writes for a non-apprenticeship program.
+    Reference data: everyone reads, staff write (console)."""
+
+    class Source(models.TextChoices):
+        IMPORTED = "imported", "Imported"
+        CUSTOM = "custom", "Custom"
+
+    code = models.CharField(max_length=40)  # e.g. ST0272; custom sets get a provider code
+    title = models.CharField(max_length=300)
+    version = models.CharField(max_length=20, blank=True)
+    level = models.PositiveSmallIntegerField(null=True, blank=True)
+    source = models.CharField(max_length=10, choices=Source.choices)
+    imported_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        db_table = table(SCHEMA, "ksb_standards")
+        constraints = [models.UniqueConstraint(fields=["code", "version"], name="uq_ksb_standard_version")]
+
+
+class KsbItem(BaseModel):
+    class Kind(models.TextChoices):
+        KNOWLEDGE = "knowledge", "Knowledge"
+        SKILL = "skill", "Skill"
+        BEHAVIOUR = "behaviour", "Behaviour"
+
+    standard = models.ForeignKey(KsbStandard, on_delete=models.CASCADE, related_name="items")
+    code = models.CharField(max_length=12)  # K1, S3, B2
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    text = models.TextField(max_length=4000)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = table(SCHEMA, "ksb_items")
+        constraints = [models.UniqueConstraint(fields=["standard", "code"], name="uq_ksb_item_code")]
+        indexes = [models.Index(fields=["standard", "position"], name="ix_ksb_items_order")]
+
+
+class ComponentKsb(BaseModel):
+    """The ONE store of which component evidences which KSB (lesson 5 of the plan). Keyed by
+    lecture_key, so it survives new program versions; learner history is never rewritten."""
+
+    program = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="+")
+    lecture_key = models.UUIDField()
+    item = models.ForeignKey(KsbItem, on_delete=models.CASCADE, related_name="+")
+
+    class Meta:
+        db_table = table(SCHEMA, "component_ksbs")
+        constraints = [
+            models.UniqueConstraint(fields=["program", "lecture_key", "item"], name="uq_component_ksb")
+        ]
+        indexes = [models.Index(fields=["program", "item"], name="ix_component_ksb_item")]
 
 
 # ---------------------------------------------------------------- instructor permissions

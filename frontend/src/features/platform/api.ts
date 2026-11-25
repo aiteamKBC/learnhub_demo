@@ -15,6 +15,7 @@ export type PublicSettings = {
   'general.default_currency': string
   'general.time_zone': string
   'general.date_format': string
+  'general.contact_email': string
   'access.registration_enabled': boolean
   'access.instructor_applications': boolean
   'access.guest_browsing': boolean
@@ -22,6 +23,8 @@ export type PublicSettings = {
   'access.maintenance_message': string
   'security.mfa_enabled': boolean
   'security.password_min_length': number
+  'payments.refund_window_days': number
+  'payments.prices_include_tax': boolean
 }
 
 export const DEFAULT_SETTINGS: PublicSettings = {
@@ -33,6 +36,7 @@ export const DEFAULT_SETTINGS: PublicSettings = {
   'general.default_currency': 'GBP',
   'general.time_zone': 'Europe/London',
   'general.date_format': 'd MMM yyyy',
+  'general.contact_email': '',
   'access.registration_enabled': true,
   'access.instructor_applications': true,
   'access.guest_browsing': true,
@@ -40,6 +44,8 @@ export const DEFAULT_SETTINGS: PublicSettings = {
   'access.maintenance_message': "We're making improvements and will be back shortly.",
   'security.mfa_enabled': true,
   'security.password_min_length': 8,
+  'payments.refund_window_days': 30,
+  'payments.prices_include_tax': true,
 }
 
 export function usePublicSettings() {

@@ -24,6 +24,7 @@ DOMAIN_APPS = [
     "apps.identity",
     "apps.org",
     "apps.catalog",
+    "apps.delivery",  # M18: program cohorts, groups, calendars
     "apps.learning",
     "apps.compliance",
     "apps.commerce",
@@ -32,6 +33,8 @@ DOMAIN_APPS = [
     "apps.analytics",
     "apps.platform",
     "apps.corporate",
+    "apps.integrations",  # M17: HR system (Breathe HR)
+    "apps.inclusion",  # inclusion test (learner self-report, admins see results)
 ]
 
 INSTALLED_APPS = [
@@ -287,6 +290,8 @@ CELERY_BEAT_SCHEDULE: dict = {
     "flush-progress-heartbeats": {"task": "learning.flush_heartbeats", "schedule": 60},
     # Everything is UTC (decision 13): statuses roll over just after midnight UTC
     "compliance-nightly": {"task": "compliance.nightly", "schedule": crontab(hour=0, minute=5)},
+    # every connected HR system, once an hour (client question 24); "Sync now" runs one at once
+    "hr-sync-hourly": {"task": "integrations.hr_hourly", "schedule": crontab(minute=15)},
 }
 
 # --- Logging ------------------------------------------------------------------------
@@ -314,6 +319,14 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "http://localhost:5173")
 
 # --- File storage (Azure Blob, see core/storage.py) -----------------------------------
+# --- HR system (M17) ---------------------------------------------------------------
+# CREDENTIAL_KEY encrypts each company's HR API key at rest (Fernet). Losing or changing it
+# means every company reconnects. Only official Breathe origins are ever called.
+HR_INTEGRATION = {
+    "CREDENTIAL_KEY": os.getenv("CREDENTIAL_ENCRYPTION_KEY", ""),
+    "ALLOWED_HOSTS": ("api.breathehr.com", "api.sandbox.breathehr.info"),
+}
+
 AZURE_STORAGE = {
     "ACCOUNT": os.getenv("AZURE_STORAGE_ACCOUNT_NAME", ""),
     "CONTAINER": os.getenv("AZURE_STORAGE_CONTAINER", "lms-resources"),
@@ -344,6 +357,14 @@ BASE_CURRENCY = "GBP"  # price tiers and reporting
 FX_DRIFT_REPRICE = 0.05  # re-price a tier in a currency only when FX moved it more than 5%
 ECB_RATES_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
 REFUND_WINDOW_DAYS = 30
+CELERY_BEAT_SCHEDULE["bank-holidays-monthly"] = {  # GOV.UK adds new years well ahead
+    "task": "delivery.sync_bank_holidays",
+    "schedule": crontab(day_of_month=2, hour=4, minute=17),
+}
+CELERY_BEAT_SCHEDULE["live-followup"] = {  # M20: Teams attendance and recordings after events end
+    "task": "delivery.live_followup",
+    "schedule": 30 * 60,
+}
 CELERY_BEAT_SCHEDULE["fx-rates-daily"] = {  # ECB publishes around 16:00 CET
     "task": "commerce.refresh_fx",
     "schedule": crontab(hour=15, minute=37),

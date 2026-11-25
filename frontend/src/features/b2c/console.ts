@@ -6,7 +6,7 @@
  * financial rule: policies that an admin hasn't configured are shown as such, and actions the
  * backend blocks (e.g. bonus-campaign activation) surface the block truthfully.
  */
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api, unwrap } from '@/api/client'
 import type { paths } from '@/api/schema'
@@ -35,8 +35,12 @@ export function useAdminPacks(includeInactive = true) {
   })
 }
 
+// Learner-side keys each change shows up in (features/b2c/api.ts), so nothing stays stale.
+const LEARNER_PACKS = ['b2c-token-packs']
+const LEARNER_PRICES = ['course', 'b2c-access']
+
 export function useCreatePack() {
-  const refresh = useInvalidate(['b2c-admin-packs', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-packs', 'b2c-admin-audit', ...LEARNER_PACKS])
   return useMutation({
     mutationFn: (body: PackBody) => unwrap(api.POST('/api/v1/console/pricing/token/packs', { body })),
     onSuccess: refresh,
@@ -44,7 +48,7 @@ export function useCreatePack() {
 }
 
 export function useUpdatePack() {
-  const refresh = useInvalidate(['b2c-admin-packs', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-packs', 'b2c-admin-audit', ...LEARNER_PACKS])
   return useMutation({
     mutationFn: (v: { packId: string; body: PackBody }) =>
       unwrap(api.PATCH('/api/v1/console/pricing/token/packs/{pack_id}', { params: { path: { pack_id: v.packId } }, body: v.body })),
@@ -53,7 +57,7 @@ export function useUpdatePack() {
 }
 
 export function useDeletePack() {
-  const refresh = useInvalidate(['b2c-admin-packs', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-packs', 'b2c-admin-audit', ...LEARNER_PACKS])
   return useMutation({
     mutationFn: (packId: string) => unwrap(api.DELETE('/api/v1/console/pricing/token/packs/{pack_id}', { params: { path: { pack_id: packId } } })),
     onSuccess: refresh,
@@ -68,7 +72,7 @@ export function useAdminRates() {
 export type RateBody = Body<'/api/v1/console/pricing/token/rates', 'post'>
 
 export function useCreateRate() {
-  const refresh = useInvalidate(['b2c-admin-rates', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-rates', 'b2c-admin-audit', 'b2c-token-rate', ...LEARNER_PACKS])
   return useMutation({
     mutationFn: (body: RateBody) => unwrap(api.POST('/api/v1/console/pricing/token/rates', { body })),
     onSuccess: refresh,
@@ -83,7 +87,7 @@ export function useAdminTopUpPolicies() {
 export type TopUpPolicyBody = Body<'/api/v1/console/pricing/token/topup-policies/{currency}', 'put'>
 
 export function useUpsertTopUpPolicy() {
-  const refresh = useInvalidate(['b2c-admin-topup', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-topup', 'b2c-admin-audit', 'b2c-topup-limits'])
   return useMutation({
     mutationFn: (v: { currency: string; body: TopUpPolicyBody }) =>
       unwrap(api.PUT('/api/v1/console/pricing/token/topup-policies/{currency}', { params: { path: { currency: v.currency } }, body: v.body })),
@@ -118,10 +122,14 @@ export function useUpdateBonusCampaign() {
 // ------------------------------------------------------------------ course / lecture token pricing + auto distribution
 // The PATCH bodies use UNSET-aware `Any` fields on the backend, so we send a precise partial
 // shape and cast at the call (the generated type widens these to `unknown`).
-export function useTokenCourses(search: string, page = 1) {
-  return useQuery({
-    queryKey: ['b2c-admin-tcourses', search, page],
-    queryFn: () => unwrap(api.GET('/api/v1/console/pricing/token/courses', { params: { query: { search: search || undefined, page } } })),
+/** Course list for token pricing, one page at a time ("Load more"). */
+export function useTokenCourses(search: string) {
+  return useInfiniteQuery({
+    queryKey: ['b2c-admin-tcourses', search],
+    queryFn: ({ pageParam }) => unwrap(api.GET('/api/v1/console/pricing/token/courses', { params: { query: { search: search || undefined, page: pageParam } } })),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.page_size < last.total ? last.page + 1 : undefined),
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -138,7 +146,7 @@ export type CourseTokenPatch = { price_tier_id?: string | null; full_course_toke
 export type LectureTokenPatch = { token_price?: number | null; is_free_preview?: boolean; confirm?: boolean; reason: string }
 
 export function usePatchTokenCourse() {
-  const refresh = useInvalidate(['b2c-admin-tcourses', 'b2c-admin-tcourse', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-tcourses', 'b2c-admin-tcourse', 'b2c-admin-audit', ...LEARNER_PRICES])
   return useMutation({
     mutationFn: (v: { courseId: string; body: CourseTokenPatch }) =>
       unwrap(api.PATCH('/api/v1/console/pricing/token/courses/{course_id}', { params: { path: { course_id: v.courseId } }, body: v.body as never })),
@@ -147,7 +155,7 @@ export function usePatchTokenCourse() {
 }
 
 export function usePatchLecture() {
-  const refresh = useInvalidate(['b2c-admin-tcourse', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-tcourse', 'b2c-admin-tcourses', 'b2c-admin-audit', ...LEARNER_PRICES])
   return useMutation({
     mutationFn: (v: { lectureId: string; body: LectureTokenPatch }) =>
       unwrap(api.PATCH('/api/v1/console/pricing/token/lectures/{lecture_id}', { params: { path: { lecture_id: v.lectureId } }, body: v.body as never })),
@@ -156,7 +164,7 @@ export function usePatchLecture() {
 }
 
 export function usePatchMaterial() {
-  const refresh = useInvalidate(['b2c-admin-tcourse', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-tcourse', 'b2c-admin-tcourses', 'b2c-admin-audit', ...LEARNER_PRICES])
   return useMutation({
     mutationFn: (v: { materialId: string; body: LectureTokenPatch }) =>
       unwrap(api.PATCH('/api/v1/console/pricing/token/materials/{material_id}', { params: { path: { material_id: v.materialId } }, body: v.body as never })),
@@ -167,7 +175,7 @@ export function usePatchMaterial() {
 export type DistributeBody = Body<'/api/v1/console/pricing/token/courses/{course_id}/distribute-tokens', 'post'>
 
 export function useDistributeTokens() {
-  const refresh = useInvalidate(['b2c-admin-tcourse', 'b2c-admin-tcourses', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-tcourse', 'b2c-admin-tcourses', 'b2c-admin-audit', ...LEARNER_PRICES])
   return useMutation({
     mutationFn: (v: { courseId: string; body: DistributeBody }) =>
       unwrap(api.POST('/api/v1/console/pricing/token/courses/{course_id}/distribute-tokens', { params: { path: { course_id: v.courseId } }, body: v.body })),
@@ -184,7 +192,7 @@ export function useAdminPackages() {
 }
 
 export function useCreatePackage() {
-  const refresh = useInvalidate(['b2c-admin-packages', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-packages', 'b2c-admin-audit', 'b2c-cash-packages'])
   return useMutation({
     mutationFn: (body: PackageBody) => unwrap(api.POST('/api/v1/console/packages', { body })),
     onSuccess: refresh,
@@ -192,7 +200,7 @@ export function useCreatePackage() {
 }
 
 export function useUpdatePackage() {
-  const refresh = useInvalidate(['b2c-admin-packages', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-packages', 'b2c-admin-audit', 'b2c-cash-packages'])
   return useMutation({
     mutationFn: (v: { packageId: string; body: PackagePatchBody }) =>
       unwrap(api.PATCH('/api/v1/console/packages/{package_id}', { params: { path: { package_id: v.packageId } }, body: v.body })),
@@ -201,7 +209,7 @@ export function useUpdatePackage() {
 }
 
 export function useDeletePackage() {
-  const refresh = useInvalidate(['b2c-admin-packages', 'b2c-admin-audit'])
+  const refresh = useInvalidate(['b2c-admin-packages', 'b2c-admin-audit', 'b2c-cash-packages'])
   return useMutation({
     mutationFn: (packageId: string) => unwrap(api.DELETE('/api/v1/console/packages/{package_id}', { params: { path: { package_id: packageId } } })),
     onSuccess: refresh,
@@ -245,6 +253,12 @@ export function useAdjustWallet() {
   return useMutation({
     mutationFn: (v: { userId: string; amount: number; note: string }) =>
       unwrap(api.POST('/api/v1/console/wallet/user/{user_id}/adjust', { params: { path: { user_id: v.userId } }, body: { amount: v.amount, note: v.note } })),
-    onSuccess: (_d, v) => qc.invalidateQueries({ predicate: (q) => ['b2c-admin-wallet', 'b2c-admin-wallet-ledger'].includes(String(q.queryKey[0])) && q.queryKey[1] === v.userId }),
+    onSuccess: (_d, v) =>
+      qc.invalidateQueries({
+        predicate: (q) =>
+          (['b2c-admin-wallet', 'b2c-admin-wallet-ledger'].includes(String(q.queryKey[0])) && q.queryKey[1] === v.userId) ||
+          // staff adjusting their own wallet see it at once in /wallet too
+          ['b2c-wallet-balance', 'b2c-wallet-grants', 'b2c-wallet-ledger'].includes(String(q.queryKey[0])),
+      }),
   })
 }

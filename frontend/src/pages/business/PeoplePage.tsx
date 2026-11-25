@@ -10,6 +10,8 @@ import { EmptyState, ErrorState, PageHeader, StatCard } from '@/components/ui/mi
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { useDashboard } from '@/features/compliance/api'
+import { type HrLeave, useHrLeave } from '@/features/integrations/api'
+import { LeaveBadge } from '@/features/integrations/ui'
 import { type Person, ROLE_LABEL, unitLabel, useInvites, useIsOrgAdmin, useJobRoles, usePeople, useUnits } from '@/features/org/api'
 import { ComplianceMiniBar, RoleBadge, useDebounced } from '@/features/org/ui'
 import { cn } from '@/lib/cn'
@@ -41,7 +43,7 @@ function Kpis() {
   )
 }
 
-function PersonCard({ p }: { p: Person }) {
+function PersonCard({ p, leave }: { p: Person; leave?: HrLeave }) {
   return (
     <Link to={`/business/people/${p.member_id}`} className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3.5 shadow-sm transition-colors hover:border-border-strong">
       <Avatar name={p.name || p.email} />
@@ -50,6 +52,7 @@ function PersonCard({ p }: { p: Person }) {
           <p className="truncate font-medium">{p.name || p.email}</p>
           <RoleBadge role={p.role} />
         </div>
+        {leave?.current ? <div className="mt-1"><LeaveBadge leave={leave} /></div> : null}
         <p className="truncate text-xs text-muted">{[p.job_title, p.units[0]].filter(Boolean).join(' · ') || p.email}</p>
         <div className="mt-2">
           <ComplianceMiniBar compliant={p.compliant} total={p.total} overdue={p.overdue} />
@@ -71,6 +74,8 @@ export function PeoplePage() {
   const { data: roles } = useJobRoles()
   const people = usePeople(filters)
   const rows = people.data?.pages.flatMap((p) => p.items) ?? []
+  // one call per loaded page of people; empty unless an HR system is connected
+  const leave = useHrLeave(people.data?.pages.map((p) => p.items.map((r) => r.member_id)) ?? [])
   const filtered = !!(filters.q || filters.unit_id || filters.job_role_id || filters.role)
 
   // typing updates ?q= after a pause; the header search can also change ?q= while this
@@ -179,7 +184,7 @@ export function PeoplePage() {
               <ul className="stagger grid gap-3 p-3 md:hidden">
                 {rows.map((p) => (
                   <li key={p.member_id}>
-                    <PersonCard p={p} />
+                    <PersonCard p={p} leave={leave?.get(p.member_id)} />
                   </li>
                 ))}
               </ul>
@@ -209,6 +214,7 @@ export function PeoplePage() {
                                 {p.name || p.email}
                               </Link>
                               <p className="max-w-[16rem] truncate text-xs text-muted">{p.email}</p>
+                              <LeaveBadge leave={leave?.get(p.member_id)} />
                             </div>
                           </div>
                         </Td>

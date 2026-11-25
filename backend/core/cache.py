@@ -36,3 +36,8 @@ def bump(namespace: str, scope: Hashable) -> None:
         cache.incr(vk)
     except ValueError:
         cache.set(vk, 2, timeout=None)
+
+
+def current_version(namespace: str, scope: Hashable) -> int:
+    """The namespace's current version, for keys that depend on more than one namespace."""
+    return _version(namespace, scope)

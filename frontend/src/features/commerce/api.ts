@@ -125,3 +125,24 @@ export function usePlanEnroll() {
     onSuccess: () => qc.invalidateQueries({ predicate: (q) => ['course', 'my-courses'].includes(String(q.queryKey[0])) }),
   })
 }
+
+// ------------------------------------------------------------------ programs (M21)
+/** One program offer straight to Stripe. A live place needs an intake; `instalments` > 1 pays monthly. */
+export function useProgramCheckout() {
+  const refresh = useCommerceRefresh()
+  return useMutation({
+    mutationFn: (v: { offerId: string; currency: string; cohortId?: string | null; instalments: number }) =>
+      unwrap(api.POST('/api/v1/commerce/programs/checkout', { body: { offer_id: v.offerId, currency: v.currency, cohort_id: v.cohortId ?? null, instalments: v.instalments }, headers: PERSONAL })),
+    onSuccess: () => refresh(),
+  })
+}
+
+/** A recorded program module paid with tokens: the wallet, the course page and My learning change. */
+export function useUnlockProgramModule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (offerId: string) => unwrap(api.POST('/api/v1/commerce/programs/unlock-module', { body: { offer_id: offerId }, headers: PERSONAL })),
+    onSettled: () =>
+      qc.invalidateQueries({ predicate: (q) => ['b2c-wallet-balance', 'b2c-wallet-ledger', 'course', 'my-courses', 'player', 'lecture'].includes(String(q.queryKey[0])) }),
+  })
+}

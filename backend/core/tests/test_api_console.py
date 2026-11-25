@@ -59,6 +59,8 @@ class ConsoleApiTest(SchemaTransactionTestCase):
         self.post(
             f"/studio/sections/{sec}/lectures", {"kind": "article", "title": "Hello", "body": "<p>Hi</p>"}
         )
+        self.client.put(f"{API}/studio/courses/{c['id']}/price", data={"free": True},
+                        content_type="application/json")  # the checklist needs a price  # fmt: skip
         self.post(f"/studio/versions/{v}/submit")
         self.as_(self.staff)
         queue = self.get("/console/review/courses").json()

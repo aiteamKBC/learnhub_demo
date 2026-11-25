@@ -30,12 +30,31 @@ export function useCorporateDashboard() {
 export function usePackages(enabled = true) {
   return useQuery({ queryKey: key('packages'), queryFn: () => unwrap(api.GET('/api/v1/corporate/packages')), enabled })
 }
+/** The purchase whose Stripe checkout was opened last on this tab (checkout stores it). */
+const WATCH_KEY = 'corp-checkout-purchase'
+export function watchedPurchaseId(): string | null {
+  try {
+    return sessionStorage.getItem(WATCH_KEY)
+  } catch {
+    return null
+  }
+}
+type PurchaseRow = { id: string; status: string; created_at: string }
+/** The purchase to wait for after Stripe: the one just started here, or (another tab, or
+ * storage blocked) the newest one. Never "any pending purchase": an abandoned earlier
+ * checkout stays pending for ever and would spin the page. */
+export function watchedPurchase<T extends PurchaseRow>(rows: T[] | undefined): T | undefined {
+  if (!rows?.length) return undefined
+  const id = watchedPurchaseId()
+  return (id ? rows.find((p) => p.id === id) : undefined) ?? [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+}
 export function usePurchases(poll = false) {
   return useQuery({
     queryKey: key('purchases'),
     queryFn: () => unwrap(api.GET('/api/v1/corporate/purchases')),
-    // after Stripe sends the buyer back, payment is confirmed by a webhook a moment later
-    refetchInterval: (q) => (poll && q.state.data?.some((p) => p.status === 'pending') ? 4000 : false),
+    // after Stripe sends the buyer back, payment is confirmed by a webhook a moment later;
+    // wait for that one purchase only, for about three minutes at most
+    refetchInterval: (q) => (poll && watchedPurchase(q.state.data)?.status === 'pending' && q.state.dataUpdateCount < 45 ? 4000 : false),
   })
 }
 export function useQuotes(enabled = true) {
@@ -98,7 +117,14 @@ export function useRecordedCheckout() {
   return useMutation({
     mutationFn: ({ offeringId, quantity }: { offeringId: string; quantity: number }) =>
       unwrap(api.POST('/api/v1/corporate/packages/{offering_id}/checkout', { params: { path: { offering_id: offeringId } }, body: { quantity } })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: key('purchases') }),
+    onSuccess: (r) => {
+      try {
+        sessionStorage.setItem(WATCH_KEY, r.purchase_id) // the purchases page waits for this one
+      } catch {
+        /* storage blocked: the page falls back to the newest purchase */
+      }
+      return qc.invalidateQueries({ queryKey: key('purchases') })
+    },
   })
 }
 

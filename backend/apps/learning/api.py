@@ -7,6 +7,7 @@ sure nobody can PLAY, SUBMIT or GRADE-THEMSELVES as another person.
 """
 
 from datetime import timedelta
+from uuid import UUID
 
 from django.db.models import F, Prefetch, Q
 from django.db.models.functions import Coalesce
@@ -15,7 +16,7 @@ from django.utils import timezone
 from ninja import Router
 
 from apps.catalog import media, resources
-from apps.catalog.models import CourseInstructor, Lecture, QuizQuestion
+from apps.catalog.models import Course, CourseInstructor, Lecture, Module, QuizQuestion
 from apps.catalog.selectors import curriculum, learner_quiz
 from core import cursor as keyset
 from core import html
@@ -23,13 +24,19 @@ from core.auth import session_auth
 from core.errors import ServiceError
 
 from . import progress, services, uploads
-from .models import Certificate, Enrollment, LectureProgress, Note, QuizAttempt, Submission
+from .models import Certificate, Enrollment, EnrollmentModule, LectureProgress, Note, QuizAttempt, Submission
 from .schemas import (
     AttemptOut,
     CertificateOut,
     DownloadOut,
     HeartbeatIn,
     HeartbeatOut,
+    LearnerIdOut,
+    LearnerOtjLogIn,
+    LearnerOtjPageOut,
+    LearnerRecordOut,
+    LearnerSessionsOut,
+    LearnerWorkshopsOut,
     LectureContent,
     MyCoursePage,
     NoteIn,
@@ -57,8 +64,34 @@ def _mine(request, enrollment_id) -> Enrollment:
     if e.status not in LIVE:
         raise ServiceError("no_access", "This enrolment is not active.", status=403)
     if e.access_expires_at and e.access_expires_at < timezone.now():
+        if _payment_overdue(e):
+            raise ServiceError(
+                "payment_overdue",
+                "Your monthly payment didn't go through, so access is paused. Update your card to carry on.",
+                status=403,
+            )
         raise ServiceError("access_expired", "Your access to this course has ended.", status=403)
     return e
+
+
+def _payment_overdue(e: Enrollment) -> bool:
+    """A program paid monthly whose payment failed (M21): access pauses until it is paid."""
+    if e.course.kind != "program" or e.source != Enrollment.Source.PURCHASE or not e.source_ref:
+        return False
+    from apps.commerce.models import InstalmentPlan
+
+    return InstalmentPlan.objects.filter(
+        order__items__id=e.source_ref, status__in=["past_due", "cancelled"]
+    ).exists()
+
+
+def _check_module(e: Enrollment, lec: Lecture) -> None:
+    """Programs bought module by module (M21): lessons of other modules stay locked."""
+    if e.scope != Enrollment.Scope.MODULES or lec.section.module_id is None:
+        return
+    key = Module.objects.filter(pk=lec.section.module_id).values_list("module_key", flat=True).first()
+    if not EnrollmentModule.objects.filter(enrollment=e, module_key=key).exists():
+        raise ServiceError("module_locked", "This module isn't part of your purchase.", status=403)
 
 
 def _lecture(e: Enrollment, key) -> Lecture:
@@ -69,6 +102,7 @@ def _lecture(e: Enrollment, key) -> Lecture:
     )
     if lec is None:
         raise ServiceError("not_found", "Lecture not found.", status=404)
+    _check_module(e, lec)
     _check_unlocked(e, lec)
     return lec
 
@@ -126,7 +160,7 @@ def my_courses(
     qs = (
         Enrollment.objects.filter(user=request.user, status__in=LIVE)
         .annotate(seen=Coalesce("last_accessed_at", "enrolled_at"))
-        .select_related("course", "org")
+        .select_related("course", "org", "group__cohort")
         .prefetch_related(
             Prefetch(
                 "course__instructor_links",
@@ -158,6 +192,7 @@ def my_courses(
             "org_name": e.org.name if e.org_id else None, "enrolled_at": e.enrolled_at,
             "last_accessed_at": e.last_accessed_at, "last_lecture_key": e.last_lecture_key,
             "access_expires_at": e.access_expires_at, "certificate_id": certs.get(e.id),
+            **_placement(e),
         }
         for e in page
     ]  # fmt: skip
@@ -165,7 +200,83 @@ def my_courses(
     return {"items": items, "next_cursor": nxt}
 
 
+def _placement(e: Enrollment) -> dict:
+    """Programs (M18): the learner's group and this (or the next) week's dates. The
+    schedule is cached per cohort, so this is a cache read per placed enrolment."""
+    if e.group_id is None:
+        return {}
+    from apps.delivery import selectors as delivery
+
+    cohort = e.group.cohort
+    cohort.program = e.course  # same row; saves a query in the schedule lookup
+    week = delivery.schedule(cohort).this_or_next_week(timezone.localdate())
+    return {
+        "group_name": e.group.name,
+        "cohort_name": cohort.name,
+        "next_week": {"number": week.number, "title": week.title, "starts_on": week.starts_on,
+                      "ends_on": week.ends_on} if week else None,
+    }  # fmt: skip
+
+
 # ---------------------------------------------------------------- player
+def _program_view(e: Enrollment, sections: list[dict]) -> dict:
+    """Programs (M18): modules, and for a placed learner the group plus dated weeks.
+    Adds two small queries; the schedule itself is cached per cohort."""
+    from apps.delivery import selectors as delivery
+    from apps.delivery.models import Group
+
+    modules = list(Module.objects.filter(version_id=e.course.live_version_id).order_by("position"))
+    owned = None
+    if e.scope == Enrollment.Scope.MODULES:
+        owned = set(EnrollmentModule.objects.filter(enrollment=e).values_list("module_key", flat=True))
+        unowned = {m.id for m in modules if m.module_key not in owned}
+        for sec in sections:  # the same rule as _check_module: these lessons are refused
+            if sec["module_id"] in unowned:
+                for lec in sec["lectures"]:
+                    lec.update(locked=True, module_locked=True)
+    group = (
+        Group.objects.select_related("cohort", "tutor").filter(pk=e.group_id).first() if e.group_id else None
+    )
+    plan_weeks, plan_modules, current = {}, {}, None
+    if group is not None:
+        group.cohort.program = e.course  # same row; saves a query in the schedule lookup
+        schedule = delivery.schedule(group.cohort)
+        plan_modules = {m.module_key: m for m in schedule.modules}
+        plan_weeks = {w.section_id: w for m in schedule.modules for w in m.weeks}
+        today = schedule.week_for(timezone.localdate())
+        current = today.section_id if today else None
+    for sec in sections:
+        w = plan_weeks.get(sec["id"])
+        if w is not None:
+            sec.update(week_number=w.number, starts_on=w.starts_on, ends_on=w.ends_on,
+                       days_off=[{"date": d.date, "title": d.title} for d in w.days_off])  # fmt: skip
+    return {
+        "kind": e.course.kind,
+        "modules": [
+            {
+                "id": m.id,
+                "title": m.title,
+                "description": m.description,
+                "starts_on": getattr(plan_modules.get(m.module_key), "starts_on", None),
+                "ends_on": getattr(plan_modules.get(m.module_key), "ends_on", None),
+                "owned": owned is None or m.module_key in owned,
+            }
+            for m in modules
+        ],  # fmt: skip
+        "group": {
+            "name": group.name,
+            "cohort_name": group.cohort.name,
+            "weekday": group.weekday,
+            "starts_at": group.starts_at,
+            "ends_at": group.ends_at,
+            "tutor_name": group.tutor.full_name if group.tutor_id else None,
+        }
+        if group
+        else None,  # fmt: skip
+        "current_section_id": current,
+    }
+
+
 @router.get("/enrollments/{enrollment_id}", response=PlayerOut)
 def player(request, enrollment_id: str):
     """Everything the player sidebar needs, in a fixed number of queries."""
@@ -186,7 +297,7 @@ def player(request, enrollment_id: str):
         return lec.prerequisite_key if lec.prerequisite_key in titles else None
 
     sections = [
-        {"id": s.id, "title": s.title, "lectures": [
+        {"id": s.id, "title": s.title, "module_id": s.module_id, "lectures": [
             {"key": lec.lecture_key, "title": lec.title, "kind": lec.kind, "duration_sec": lec.duration_sec,
              "completed": finished(lec.lecture_key),
              "position_sec": done[lec.lecture_key].last_position_sec if lec.lecture_key in done else 0,
@@ -196,7 +307,8 @@ def player(request, enrollment_id: str):
         for s in tree
     ]  # fmt: skip
     cert = Certificate.objects.filter(enrollment=e).values_list("id", flat=True).first()
-    return {"enrollment_id": e.id, "course_id": e.course_id, "slug": e.course.slug, "title": e.course.title,
+    program = _program_view(e, sections) if e.course.kind == Course.Kind.PROGRAM else {}
+    return {**program, "enrollment_id": e.id, "course_id": e.course_id, "slug": e.course.slug, "title": e.course.title,
             "progress_pct": float(e.progress_pct), "status": e.status, "last_lecture_key": e.last_lecture_key,
             "certificate_id": cert, "sections": sections}  # fmt: skip
 
@@ -231,6 +343,17 @@ def lecture(request, enrollment_id: str, lecture_key: str):
         out["body"] = lec.body
     elif lec.kind in (Lecture.Kind.EXTERNAL_LINK,):
         out["external_url"] = lec.external_url
+    elif lec.kind == Lecture.Kind.LIVE_SESSION and e.group_id:
+        # programs (M20): the learner's own group session for this component
+        from apps.delivery.models import LiveSession
+
+        from . import live
+
+        s = LiveSession.objects.filter(group_id=e.group_id, lecture_key=lec.lecture_key).first()
+        out["live"] = {"starts_at": s.starts_at if s else None, "duration_min": s.duration_min if s else None,
+                       "join_url": live.join_url(s) if s else None,
+                       "provider": s.provider if s else "manual", "status": s.status if s else "scheduled",
+                       "join_early_min": live.join_early_min()}  # fmt: skip
     elif lec.kind == Lecture.Kind.LIVE_SESSION:
         now = timezone.now()
         starts = lec.live_starts_at
@@ -505,3 +628,107 @@ def verify(request, code: str):
         raise ServiceError("not_found", "Certificate not found.", status=404)
     row["is_expired"] = bool(row["expires_at"] and row["expires_at"] <= timezone.now())
     return row
+
+
+# ---------------------------------------------------------------- program record (M19)
+@router.get("/enrollments/{enrollment_id}/record", response=LearnerRecordOut)
+def my_record(request, enrollment_id: UUID):
+    """Off-the-job hours, KSBs, CPD and module certificates for one program enrolment."""
+    from . import records
+
+    e = _mine(request, enrollment_id)
+    return records.record(Enrollment.objects.select_related("course", "cohort").get(pk=e.pk))
+
+
+@router.get("/enrollments/{enrollment_id}/otj", response=LearnerOtjPageOut)
+def my_otj(request, enrollment_id: UUID, cursor: str | None = None, limit: int = 30):
+    """The learner's ledger, newest day first (keyset)."""
+    from .models import OtjEntry
+
+    e = _mine(request, enrollment_id)
+    limit = max(1, min(limit, 100))
+    qs = OtjEntry.objects.filter(enrollment=e).order_by("-occurred_on", "-id")
+    after = keyset.decode(cursor, 2)
+    if after:
+        qs = qs.filter(Q(occurred_on__lt=after[0]) | Q(occurred_on=after[0], id__lt=after[1]))
+    rows = list(qs[: limit + 1])
+    page = rows[:limit]
+    return {
+        "items": [
+            {"id": r.id, "source": r.source, "minutes": r.minutes, "occurred_on": r.occurred_on,
+             "status": r.status, "note": r.note, "decision_note": r.decision_note}
+            for r in page
+        ],
+        "next_cursor": keyset.encode(page[-1].occurred_on.isoformat(), page[-1].id) if len(rows) > limit else None,
+    }  # fmt: skip
+
+
+@router.post("/enrollments/{enrollment_id}/otj", response=LearnerIdOut)
+def log_otj(request, enrollment_id: UUID, body: LearnerOtjLogIn):
+    from . import records
+
+    e = _mine(request, enrollment_id)
+    entry = records.log_hours(
+        enrollment=Enrollment.objects.select_related("course").get(pk=e.pk),
+        occurred_on=body.occurred_on, minutes=body.minutes, note=body.note,
+    )  # fmt: skip
+    return {"id": entry.id}
+
+
+@router.delete("/enrollments/{enrollment_id}/otj/{entry_id}", response=OkOut)
+def withdraw_otj(request, enrollment_id: UUID, entry_id: UUID):
+    from . import records
+    from .models import OtjEntry
+
+    e = _mine(request, enrollment_id)
+    records.withdraw(entry=get_object_or_404(OtjEntry, pk=entry_id, enrollment=e))
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- live sessions and workshops (M20)
+@router.get("/enrollments/{enrollment_id}/sessions", response=LearnerSessionsOut)
+def my_sessions(request, enrollment_id: UUID):
+    """My group's live sessions: the join link only while the window is open."""
+    from . import live
+
+    e = _mine(request, enrollment_id)
+    e = Enrollment.objects.select_related("group").get(pk=e.pk)
+    return {"items": live.my_sessions(e), "group_name": e.group.name if e.group_id else None,
+            "join_early_min": live.join_early_min(), "present_min": live.present_min()}  # fmt: skip
+
+
+@router.get("/enrollments/{enrollment_id}/workshops", response=LearnerWorkshopsOut)
+def my_workshops(request, enrollment_id: UUID):
+    from . import live
+
+    return {"items": live.my_workshops(_mine(request, enrollment_id)), "present_min": live.present_min()}
+
+
+def _my_workshop(request, enrollment_id: UUID, workshop_id: UUID):
+    from apps.delivery.models import Workshop
+
+    from . import live
+
+    e = _mine(request, enrollment_id)
+    w = get_object_or_404(Workshop, pk=workshop_id)
+    if not live.can_attend(w, e):
+        raise ServiceError("not_found", "Workshop not found.", status=404)
+    return e, w
+
+
+@router.post("/enrollments/{enrollment_id}/workshops/{workshop_id}/booking", response=OkOut)
+def book_workshop(request, enrollment_id: UUID, workshop_id: UUID):
+    from . import live
+
+    e, w = _my_workshop(request, enrollment_id, workshop_id)
+    live.book(workshop=w, enrollment=e)
+    return {"ok": True}
+
+
+@router.delete("/enrollments/{enrollment_id}/workshops/{workshop_id}/booking", response=OkOut)
+def cancel_workshop(request, enrollment_id: UUID, workshop_id: UUID):
+    from . import live
+
+    e, w = _my_workshop(request, enrollment_id, workshop_id)
+    live.cancel_booking(workshop=w, enrollment=e)
+    return {"ok": True}

@@ -1,4 +1,4 @@
-import { Archive, Briefcase, Building2, ClipboardCheck, Globe2, Hash, MapPin, MoreHorizontal, Network, Pencil, Plus, UserCog, Users, X } from 'lucide-react'
+import { Archive, Briefcase, Building2, ClipboardCheck, Globe2, Hash, MapPin, MoreHorizontal, Network, Pencil, Plug, Plus, UserCog, Users, X } from 'lucide-react'
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -14,6 +14,7 @@ import { EmptyState, ErrorState, PageHeader } from '@/components/ui/misc'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { complianceTone, useSummary } from '@/features/compliance/api'
+import { useHrDepartments, useHrOverview } from '@/features/integrations/api'
 import {
   type JobRole,
   type Unit,
@@ -280,6 +281,10 @@ function Detail({ unit, units, admin, onAction }: { unit: Unit; units: Unit[]; a
   // this unit and the units below it (the dashboard only lists the top-level units)
   const summary = useSummary(unit.id)
   const [managersOpen, setManagersOpen] = useState(false)
+  // HR departments linked to this unit (asked for only when an HR system is connected)
+  const hr = useHrOverview()
+  const { data: hrDepts } = useHrDepartments(!!hr.data?.connection)
+  const linkedDepts = hrDepts?.filter((d) => d.unit_id === unit.id) ?? []
   const stats = useMemo(() => {
     if (!summary.data || summary.isPlaceholderData) return null
     let due = 0
@@ -319,6 +324,15 @@ function Detail({ unit, units, admin, onAction }: { unit: Unit; units: Unit[]; a
               {kindLabel(unit.kind)}
               {unit.code ? ` · code ${unit.code}` : ''}
             </p>
+            {linkedDepts.length ? (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {linkedDepts.map((d) => (
+                  <Badge key={d.id} tone="info" title={`People in this Breathe HR department are placed here`}>
+                    <Plug className="size-3" /> Breathe · {d.name}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
           </div>
           {admin ? (
             <Button variant="secondary" size="sm" onClick={() => onAction({ kind: 'add', unit })}>

@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { usePlans } from '@/features/catalog/api'
 import { useMySubscriptions } from '@/features/commerce/api'
 import { useMe } from '@/features/identity/auth'
+import { usePublicSettings } from '@/features/platform/api'
 import { money, shortDate } from '@/lib/format'
 import { useNavigate } from '@/lib/router'
 
@@ -24,6 +25,7 @@ export function PlansPage() {
   const { data: plans, isLoading } = usePlans()
   const navigate = useNavigate()
   const { data: subs } = useMySubscriptions(!!me)
+  const contact = usePublicSettings().settings['general.contact_email']
 
   const monthly = plans?.find((p) => p.audience === 'personal' && p.interval === 'month')
   const yearly = plans?.find((p) => p.audience === 'personal' && p.interval === 'year')
@@ -129,12 +131,17 @@ export function PlansPage() {
           </Card>
         </div>
 
-        <p className="mt-6 text-center text-sm text-muted">
-          Running a company?{' '}
-          <a className="font-medium text-primary hover:underline" href="mailto:business@learnhub.example.com?subject=LearnHub%20for%20teams">
-            Talk to our team
-          </a>{' '}
-          about training for your whole team.
+        <p id="teams" className="mt-6 scroll-mt-24 text-center text-sm text-muted">
+          Running a company? Teams get their own workspace with required training, a live compliance matrix and reports.
+          {contact ? (
+            <>
+              {' '}
+              <a className="font-medium text-primary hover:underline" href={`mailto:${contact}?subject=${encodeURIComponent('LearnHub for teams')}`}>
+                Talk to our team
+              </a>{' '}
+              to set one up.
+            </>
+          ) : null}
         </p>
 
         <section className="mx-auto mt-16 max-w-3xl">

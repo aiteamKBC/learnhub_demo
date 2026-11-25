@@ -20,6 +20,7 @@ from apps.org.models import JobRole, OrgMember, OrgUnit
 from core.errors import ServiceError
 from core.tenancy import tenant_context
 from core.tests.base import SchemaTransactionTestCase
+from core.tests.factories import priced_for_publish
 
 S = MemberStatus.Status
 DAY = timedelta(days=1)
@@ -211,6 +212,7 @@ class LifecycleTest(ComplianceBase):
             )
             sec = cat.add_section(version=public.versions.get(), title="Basics")
             cat.add_lecture(section=sec, kind="article", title="Read", body="<p>Exits</p>")
+            priced_for_publish(public)
             cat.submit(version=public.versions.get(), by=staff)
             public.refresh_from_db()
         req = self.require([{}], renewal_months=12, course=public)

@@ -25,6 +25,8 @@ function RequestForm() {
     ? (purchases.data ?? []).filter((p) => p.status === 'paid' && p.delivery_type === 'recorded').map((p) => ({ id: p.id, label: `${p.course_title} · ${p.quantity} seats · ${shortDate(p.paid_at ?? p.created_at)}` }))
     : (bookings.data ?? []).filter((b) => ['offered', 'pending_pay', 'paid', 'active'].includes(b.status)).map((b) => ({ id: b.id, label: `${b.course_title} · ${b.approved_seats} places` }))
   const valid = !!target && reason.trim().length >= 10
+  const source = recorded ? purchases : bookings
+  const optionsHint = source.isLoading ? 'Loading…' : source.error ? (recorded ? "We couldn't load your purchases. Refresh to try again." : "We couldn't load your bookings. Refresh to try again.") : options.length ? undefined : recorded ? 'You have no paid purchases.' : 'You have no open bookings.'
 
   const send = (e: FormEvent) => {
     e.preventDefault()
@@ -58,7 +60,7 @@ function RequestForm() {
               </NativeSelect>
             )}
           </Field>
-          <Field label={recorded ? 'Which purchase?' : 'Which booking?'} hint={options.length ? undefined : recorded ? 'You have no paid purchases.' : 'You have no open bookings.'}>
+          <Field label={recorded ? 'Which purchase?' : 'Which booking?'} hint={optionsHint}>
             {(p) => (
               <NativeSelect {...p} value={target} onChange={(e) => setTarget(e.target.value)} required disabled={!options.length}>
                 <option value="">Choose…</option>

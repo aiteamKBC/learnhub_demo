@@ -10,13 +10,14 @@ import { duration, money } from '@/lib/format'
 import type { CourseCardData } from './api'
 import { Link } from '@/lib/router'
 
-export function Price({ price, className }: { price: CourseCardData['price']; className?: string }) {
+export function Price({ price, from, className }: { price: CourseCardData['price']; from?: boolean; className?: string }) {
   if (!price) return null
   if (price.free) return <span className={className}>Free</span>
   const list = price.list_minor ?? 0
   const now = price.sale_minor ?? list
   return (
     <span className={className}>
+      {from ? <span className="mr-1 text-[13px] text-muted">From</span> : null}
       <span className="font-semibold text-text tabular">{money(now, price.currency, price.exponent)}</span>
       {price.sale_minor != null ? <span className="ml-1.5 text-[13px] text-subtle line-through tabular">{money(list, price.currency, price.exponent)}</span> : null}
     </span>
@@ -56,7 +57,7 @@ export function CourseCard({ course }: { course: CourseCardData }) {
           </span>
         </p>
         <div className="mt-auto flex items-end justify-between pt-3">
-          <Price price={course.price} />
+          <Price price={course.price} from={course.price_from} />
           {course.level && course.level !== 'all' ? <Badge tone="outline" className="capitalize">{course.level}</Badge> : null}
         </div>
       </div>

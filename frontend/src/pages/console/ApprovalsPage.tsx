@@ -14,11 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type CourseDecision, type QueueItem, type QueueTab, type ReviewVersion, useApprovalQueue, useCourseDecision, useReviewPlayback, useReviewVersion, useTemplateDecision } from '@/features/console/approvals'
 import { CertificatePreview } from '@/features/console/certificate-preview'
 import { templatePreviewPath, useCertTemplates } from '@/features/console/certificates'
-import { ConfirmDialog, gbp, StatusPill, useParam, useTabParam } from '@/features/console/ui'
+import { ConfirmDialog, gbp, StatusPill, useParam, usePatchParams, useTabParam } from '@/features/console/ui'
 import { useDebounced } from '@/features/org/ui'
 import { API_BASE_URL } from '@/lib/env'
 import { cn } from '@/lib/cn'
 import { duration, relativeDate, shortDate } from '@/lib/format'
+import { reducedMotion } from '@/lib/motion'
 
 const QUEUE_TABS = ['all', 'new', 'changes', 'templates'] as const
 const QUEUE_LABEL: Record<QueueTab, string> = { all: 'All', new: 'New courses', changes: 'Course changes', templates: 'Certificate templates' }
@@ -427,14 +428,16 @@ function TemplateReview({ id }: { id: string }) {
 // ---------------------------------------------------------------- page
 export function ConsoleApprovalsPage() {
   const [tab, setTab] = useTabParam(QUEUE_TABS, 'all')
-  const [item, setItem] = useParam('item')
-  const [kind, setKind] = useParam('kind')
+  const [itemParam] = useParam('item')
+  const [version] = useParam('version') // dashboard links send ?version=<id>: the same id as ?item=
+  const item = itemParam || version
+  const [kind] = useParam('kind')
+  const patchParams = usePatchParams()
   const detail = useRef<HTMLDivElement>(null)
   const pick = (i: QueueItem) => {
-    setItem(i.id)
-    setKind(i.kind === 'template' ? 'template' : '')
+    patchParams({ item: i.id, version: '', kind: i.kind === 'template' ? 'template' : '' })
     // on a phone the review sits under the queue: bring it into view
-    if (window.matchMedia('(max-width: 1023px)').matches) setTimeout(() => detail.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    if (window.matchMedia('(max-width: 1023px)').matches) setTimeout(() => detail.current?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }), 50)
   }
   const isTemplate = kind === 'template' || (tab === 'templates' && !!item && kind !== 'course')
   return (

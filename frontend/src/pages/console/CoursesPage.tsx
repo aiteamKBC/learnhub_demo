@@ -502,7 +502,7 @@ function CategoryDialog({ cat, open, onOpenChange, parents }: { cat?: ConsoleCat
       <DialogContent title={cat ? 'Edit category' : 'Add category'}>
         <form className="grid gap-4" onSubmit={(e) => (e.preventDefault(), cat ? update.mutate({ id: cat.id, name: name.trim(), icon: icon.trim() }, done('Category saved')) : create.mutate({ name: name.trim(), icon: icon.trim(), parent_id: parent || null }, done('Category added')))}>
           <Field label="Name">{(p) => <Input {...p} value={name} onChange={(e) => setName(e.target.value)} minLength={2} maxLength={120} required />}</Field>
-          <Field label="Icon (optional)" hint="An icon name, for example code or briefcase.">{(p) => <Input {...p} value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={48} pattern="[A-Za-z0-9-]*" />}</Field>
+          <Field label="Icon (optional)" hint="An icon name, for example code or briefcase.">{(p) => <Input {...p} value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={48} pattern="[A-Za-z0-9\-]*" />}</Field>
           {!cat ? (
             <Field label="Inside">
               {(p) => (

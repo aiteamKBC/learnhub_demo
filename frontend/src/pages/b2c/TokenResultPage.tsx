@@ -29,7 +29,8 @@ export function TokenResultPage() {
   const credited = baseline != null && balance.data != null && balance.data.balance > baseline
   const gained = credited ? balance.data!.balance - baseline! : 0
 
-  const [slow, setSlow] = useState(false)
+  // Without a pre-checkout balance we cannot see the credit land: say so at once
+  const [slow, setSlow] = useState(baseline == null)
   useEffect(() => {
     const t = setTimeout(() => setSlow(true), 60_000)
     return () => clearTimeout(t)
@@ -38,6 +39,7 @@ export function TokenResultPage() {
   // Clear the baseline once credited so a later visit doesn't mis-read an old value.
   useEffect(() => {
     if (credited) {
+      document.title = 'Tokens added · LearnHub'
       try {
         sessionStorage.removeItem('b2c-token-baseline')
       } catch {

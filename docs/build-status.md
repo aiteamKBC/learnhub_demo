@@ -2,6 +2,585 @@
 
 Maintained by Claude Code (`/status`) and read by the planner session. Newest milestone first.
 
+## Inclusion test (2026-11-25, user request)
+
+A learner questionnaire built from the client's `safeguarding-questions.json`: six sections of ten questions, each answered on a 0 to 3 scale. Admins edit it and read the results in the console. User decisions: results and the editor are for admins only; the test is optional and can be taken again; flag thresholds are edited by admins.
+
+- **Backend:** new app and schema `inclusion` (`apps/inclusion`, `core/migrations/0005_inclusion_schema.py`).
+  - Sections and questions are reference data, with RLS `reference`. Attempts have RLS `personal`: the learner or staff.
+  - Nothing links to a company, so an employer can never read answers. `lms_readonly` gets no grant on this schema, because any role can set the staff key itself.
+  - Each submitted attempt keeps a copy of the questions, answers and section scores. Flags are recomputed from the current thresholds whenever a threshold changes or a section is deleted.
+  - Advisory locks: one per learner, so a save and a submit never create two drafts; and one for flags, so threshold edits run one at a time and submissions wait for them.
+  - Learner endpoints: `GET /api/v1/inclusion/me`, `PUT /me/draft`, `POST /me/submit`.
+- **Console** (`apps/platform/console/inclusion.py`): `/console/inclusion/questions`, sections (create, edit, delete, reorder), questions (create, edit, delete, reorder), and `/console/inclusion/results` (keyset list with search, a flagged filter and a section filter, plus a detail view with earlier attempts).
+  - Admins only: superusers, or anyone holding `roles.manage`. Every edit and every opened result is written to the audit log.
+- **Frontend:**
+  - Learner page `/learn/inclusion` ("Inclusion test" in the My learning sidebar). A consent note comes first; questions go one section at a time and save as the learner goes; the thank-you screen offers "Take it again", which starts from the last answers.
+  - Console pages "Inclusion results" and "Inclusion questions" (new nav section "Learner support").
+  - New backdrop `spectrum`.
+- **Migrations:** `core 0005_inclusion_schema`, then `inclusion 0001_initial`, `0002_seed_questions` (insert-only) and `0003_security`.
+- **Review** (`reviewer` agent) found no access gap. Fixed: autosave racing with submit (server locks, and the page now queues saves and waits for them before sending); flags going stale when two admins edit at once; the read-only role's grant; the score bar's motion duration; the section state carrying over between attempts in the results; and the results filter not refreshing after a new section.
+  - Raised with the client rather than decided: keeping and deleting answers, the right to withdraw, and what happens after a flag (client questions #50 and #51).
+- **Company access (user decision, same day):**
+  - A company's owners and admins read their current members' latest answers in Business › People › Inclusion results (`/business/inclusion`), through `GET /api/v1/inclusion/company/results` and `/results/{id}`.
+  - The database enforces it: migration `inclusion 0004_company_admin_read` adds a SELECT-only policy that requires the caller to be an active owner or admin of the request's company, and the learner an active member. Managers, learners, other companies and removed members see nothing.
+  - The results view is shared with the console (`features/inclusion/ResultsView.tsx`, `scope` console or company). The learner's consent note now says company owners and admins can see the answers.
+  - Client question #52 asks the client to confirm.
+- **Checks:** all 11 inclusion tests pass, as do the row-security and API-contract tests, the type check and the production build. Neon dropped the network during the full run, so four tests were re-run on their own and passed. The main chunk is 147 kB, up from 143 kB because of the new backdrop and the sign-in switch.
+
+## Learner / organisation sign-in (2026-11-25, user request)
+
+- Header (logged out, desktop): a "For organisations" button opens `/login?as=org`.
+- `/login` and `/signup` have a Learner / Organisation switch (`pages/auth/AudienceSwitch.tsx`). The choice is in the URL (`?as=org`) and `next` is kept when switching.
+- Organisation mode only changes the wording and where you land. Log in goes to `/business` for someone who is an owner, admin or manager of a company (the guard sends companies still setting up to `/business/start`). Someone who manages no company, platform staff included, goes to `/business/start` to set one up, instead of being bounced to `/learn`. Sign-up goes to `/business/start`. An explicit `?next=` always wins. There is still one account system, and the backend is unchanged.
+- Known gap: a sign-up that needs email confirmation loses `?next=` (the link opens a new tab), so an organisation then lands on `/learn`. The "Set up your company" route is still reachable from there.
+- Also fixed: on `/courses`, the course-count skeleton was a `<div>` inside a `<p>` (a React console error).
+- Checked: type check passes. Screenshots of the header, the two log-in sides and organisation sign-up, in light and dark. Phone width 375 px with no horizontal scroll.
+
+## Finishing the "built, checks owed" milestones (2026-11-25, in progress)
+
+User request: finalise M4, M5, M6, B2C, B2B, M17 and M18–M22 (browser tests, phone checks, reviewer).
+- **Setup on this Linux machine:** hooks call `python3` (the guard works again); ruff, waitress, Playwright and
+  Chromium installed. The `e2e` Neon branch was **reset from dev** (user decision), so it is fully migrated.
+- **Harness:** always forces `MAIL_MODE=console` (serve.py, on_e2e.py, lib.js), so E2E never sends real email;
+  `lib.js` reads `E2E_DEMO_PASSWORD` from `backend/.env.e2e` if it isn't in the environment.
+- **Waiting on the user:** `backend/.env.e2e` (e2e URLs + demo password). E2E, phone checks and Lighthouse need it.
+- **Reviewer, M17:** a "signal receivers garbage-collected" finding was checked and is false (the real receivers
+  fire). Real findings (transactions held across Breathe calls, disconnect undone by a running sync, sync races,
+  manager seeing company-wide training records, training not imported at link time, archived units, untyped
+  counts) are being fixed with tests together with the missing M17 tests. Frontend fixed: People page leave badges
+  (one request per page, past 200 people), HR page offline crash, "Breathe" on the Units badge. New client
+  question #48 (Breathe line managers become company managers automatically).
+- **M17 tests now exist:** `apps/integrations/tests/` (client 17, secrets 5, sync 24, API 6): **52 tests OK**;
+  `test_api_contract` + `test_rls` OK; ruff clean. Review fixes done with tests: a sync reads Breathe with no
+  transaction open (claim, fetch, then write under a lock; request paths use an 8 s timeout and one retry); a
+  paused or disconnected connection's runs are cancelled ("failed", code `cancelled`, nobody notified) and never
+  reopen the connection; one claim per run and `select_for_update` before the busy check; training imports take
+  the org lock (never twice); managers see training records only for their own people; compliance is assigned at
+  link time so training counts at once; archived units are never used; `HrRunCountsOut` types the run counts
+  (types regenerated, the HR page's cast removed); case-insensitive email suggestions. Found by the tests: the
+  training title spelling could change between loads. **Not built:** the brief's sync "dry run" (needs a new
+  column). Still company-wide for managers: the overview counts and department people counts.
+- **Harness for M17:** `tools/harness/fake_breathe.py` (accepts `e2e-fake-breathe-key-0001` only) is installed in
+  `e2e_wsgi.py` and in the new worker entry `e2e_celery.py` (serve.py starts `celery -A e2e_celery`).
+- **Reviewer, whole frontend (M4–M6, B2C, B2B):** fixed 17 items, among them: console Approvals click did nothing
+  (two URL setters overwrote each other; new `usePatchParams`), "Tokens added" shown before payment, links to tabs
+  and params pages ignored, 11 routes without titles, hard-coded "30-day refund", destructive actions without
+  confirmation, stale learner caches after B2C admin changes, wrong access/grant/ledger codes, money formatting for
+  non-2-decimal currencies, lecture token unlock button on the course page, My learning capped at 24 courses, B2B
+  "Confirming payment" spinning after an old abandoned checkout, wording and reduced-motion scrolls. Main entry
+  142.9 → 143.3 kB (route titles). New client question #49 (the console's "2× fair price" token rule).
+
+## Local setup on Linux and dev migrations (2026-11-17)
+
+- **Every API call returned 500 locally.** `REDIS_URL` is set but no Redis ran on this machine. Redis now runs in
+  Docker (`learnhub-redis`, `redis:7.4-alpine`, bound to 127.0.0.1:6379, restarts with Docker).
+- **Dev was 27 migrations behind** (the M18–M22 set and `learning.0016`), so the course lists failed on
+  `commerce.program_offers`. With the user's OK, `migrate --database owner` ran on dev: all applied, none pending.
+- **Bug fixed: `identity.0006_staff_roles_seed_and_security` failed on any database that has staff users**
+  ("cannot ALTER TABLE staff_role_assignments because it has pending trigger events"): the seeded assignments
+  left deferred foreign-key checks queued before RLS was switched on. Tests never saw it (no staff exist at
+  migration time). Fix: `SET CONSTRAINTS ALL IMMEDIATE` between the seed and the RLS steps; the result is unchanged.
+  The e2e branch and production need this fix before they migrate.
+
+## Programs v1: cross-milestone review and fixes (2026-11-17, part of the long-tests box)
+
+The `reviewer` read all Programs work (M18 to M23) for problems that only show up across milestones. Fixed:
+- **A refunded live learner kept their group.** A refund (and a lapsed re-grant) now clears the cohort and group,
+  and gives back future workshop places. A later module unlock never brings the old group back.
+- **A paid live learner waiting for a group could be charged again.** A place in the cohort with no group now
+  counts as owned.
+- **Buying one module showed every live session of the group**, with join links and recordings. The learner now
+  sees only the sessions of the modules they own.
+- **Expired access kept its place.** One rule, `learning.models.holds_place()` (active or completed, and access not
+  run out), now drives group and cohort counts, the tutor's register, attendance marking and workshop booking.
+  Its SQL twin is the new `learning.0016_seat_counts_access` (replaces the count function's body; no table or row
+  changes).
+- **A bad company seat payment was dropped silently.** A wrong amount or a payment through an old checkout page
+  now raises: the error is stored on the Stripe event (Console) and Stripe retries, as for B2C.
+- A released or swapped company seat gives back its future workshop places.
+- Staff can place a seat holder whose personal enrolment was refunded (the company seat is used).
+- A hand-written response type in `features/programs/ui.tsx` now comes from the generated schema.
+- `seed_programs` creates its offers **switched off**, so nothing goes on sale at a placeholder price.
+
+**Tests:** new `test_refund_gives_the_place_back` (B2C), and the B2B wrong-amount test now expects the stored error.
+Run: `test_program_buying`, `test_program_seats`, `apps.delivery`, `apps.learning`: 44 tests OK.
+`makemigrations --check` clean, ruff clean, `tsc -b` clean, `vite build` passes (entry 142.9 kB, unchanged).
+
+**Recorded, not fixed:** client questions #45 (one person with a personal place and a company seat), #46 (a seat
+holder leaving the company), #47 (module learners and workshops). B2B seat orders get no invoice row (the seat
+orders list is their record). Console seat swaps: the newest 100 (known limit since M22).
+
+**Migration the user must run:** `learning.0016_seat_counts_access` (with the others, `--database owner`).
+
+## M23 Seed the real programs (2026-11-17, Part 2 built; Part 1 waits for the user)
+
+Brief: `docs/milestones/M23-merge-and-seed.md`.
+
+**Part 1, the old live cohorts merge, is not built.** The plan's merge doesn't fit the data (old cohorts belong to
+short courses). The options are in `docs/NEEDS-USER.md` #1. Nothing on the old live tables was changed.
+
+**Part 2: `python manage.py seed_programs`** (`apps/delivery/management/commands/seed_programs.py`)
+- Reads one file per program from `backend/apps/delivery/seed/programs/*.json`. Today these are PCP, MM and ME.
+- The files are **provisional** (`docs/NEEDS-USER.md` #2): the real module titles and standards from LMS_v2, with
+  4 weeks of LMS_v2's standard week per module. MBA has no file until its modules are known. When the real
+  structure is exported, only the files change.
+- The standard week: a live session (2 h OTJ and CPD), a reading (2 h) and a reflection assignment (30 min).
+  LMS_v2's recording and video slots are left out: recordings come from each group's Teams session, and a video
+  needs a real upload.
+- For each program, through the normal services:
+  - the program, owned by the platform, published;
+  - its KSB standard: already imported, given in the file, or looked up on the standards feed (`--offline` skips
+    the feed); components mapped to KSBs where the file maps them;
+  - settings: the standard and an OTJ target of 6 hours a week (from the file);
+  - offers: the whole program live and recorded, and each module recorded, at one placeholder tier (client
+    question #33). The provider sets real prices in the console;
+  - a running cohort (the latest intake at least three weeks old that still has two weeks to teach, else the
+    Monday three weeks ago) and a planned one (the next intake), each with two groups, the demo tutor and a weekly
+    timetable;
+  - 12 demo learners (`<key>.learnerNN@learnhub.example.com`, no usable password) placed in the groups;
+  - planned sessions for every group, and for the running cohort: attendance for past sessions, completed
+    readings, and two OTJ logs each (one approved by the tutor, one waiting).
+- One transaction per program. A program whose slug exists is skipped. `--only PCP MM` seeds some; `--by` names
+  the staff author (default: the first superuser).
+- It never notifies anyone, never sends mail and never creates Teams meetings:
+  - `engagement.notify.muted()` (new) wraps the whole seed, so no notice or email goes out whatever the templates
+    say;
+  - `plan_sessions` gained `sync=False`. Staff create the meetings from the console.
+- The tutor is always the demo tutor (`tutor@learnhub.example.com`, no password), never a real staff member. It gets
+  a role that may only teach groups (an existing one, else a new "Tutor" role), never an admin role.
+- `--by` with an unknown email stops with an error instead of falling back.
+
+**Reviewer fixes**
+- The seed could notify demo learners (OTJ approvals) and email them if staff switched that template's email on.
+- On about half of all dates the "running" cohort had already finished (an intake up to 20 weeks old for a
+  12-week program).
+- Demo groups could be given to a real staff tutor. A matching role could be an admin role.
+- A mistyped `--by` was silently ignored.
+- Known limit: automatic OTJ hours for completed readings are dated the seed day (the service dates them "today").
+
+**Tests:** `apps.delivery.tests.test_seed_programs`, 3 tests, OK:
+- a program from a test file: published, standard and mapped KSBs, settings, offers, two cohorts with two groups
+  each, 12 learners placed, sessions, attendance, readings and OTJ logs;
+- with Teams counted as connected, no meeting job is queued; no notification is created;
+- the demo tutor has no password and only a teaching role;
+- a second run creates nothing (16 tables counted);
+- for every day of a year and every real file, the running cohort is three weeks old or more and still has weeks
+  left;
+- the real files are valid.
+
+ruff is clean.
+
+**Full backend suite (2026-11-17, first long-test run):** 465 tests, 464 passed, 1 failed:
+`core.tests.test_query_budgets` "me" (11 → 10 queries). The cause: platform settings are cached for 60 s, and on
+Neon a page round takes over a minute, so a settings reload landed in one count but not the other. The budget test
+now leaves out settings reads (a fixed, timed cost, never per row). Re-run: 4 tests OK (with the seed tests).
+
+**Not run on Neon.** It is a command the user runs (`docs/user-actions.md` #5), after the M18 to M22 migrations.
+
+## M22 B2B program seats: company signup, orders, allocation, swaps, line manager view (2026-11-16, built; long tests pending by user decision)
+
+Brief: `docs/milestones/M22-b2b-program-seats.md`. Plan D8–D11, D22. **D29 is lifted for B2B**: companies can buy
+seats on programs and modules.
+
+**Tests: small targeted tests only.**
+- `apps.corporate.tests.test_program_seats` covers:
+  - signup locks the workspace;
+  - order rules;
+  - checkout and the paid webhook (wrong amount refused, retries ignored);
+  - expiry;
+  - an old Stripe page's expiry not resetting a newer one, and a just-paid page never replaced;
+  - allocation (group placement, module scope, no seat left, a manager's area, release before starting);
+  - swaps (company step, cut-off reason, tutor refused, provider reject and approve, the old progress kept);
+  - the team view's scope and a query count that doesn't grow with rows.
+- Regression set: `core.tests.test_api_contract`, `core.tests.test_rls`, `apps.commerce.tests.test_program_buying`, `apps.delivery`, `apps.org`, `apps.corporate` and `apps.learning` pass (147 tests); after the reviewer fixes, `test_program_seats`, `test_program_buying` and `apps.delivery` pass again (29 tests).
+- ruff, `makemigrations --check`, `tsc -b`, oxlint and `vite build` are clean.
+- The main entry is 142.9 kB (was 140 kB): the new routes, the menu item and the workspace guard.
+
+**Built**
+- **Data (additive, new tables).** `SeatPurchase.offering` and `AllocationEvent.allocation` are NOT NULL, so program
+  seats have their own tables rather than altering those columns:
+  - `corporate.ProgramSeatOrder`, `ProgramSeatLine`, `ProgramSeatAllocation`, `SeatSwapRequest`, `ProgramSeatEvent`
+    (the audit trail);
+  - `company_only` RLS on all of them, plus composite foreign keys so two companies' rows can never be linked;
+  - `Organization.onboarding_state` (db_default `active`: existing companies are unchanged);
+  - three `ProgramSetting` columns (minimum seats per line, swap cut-off mode and value);
+  - `EnrollmentModule.Source.SEAT`;
+  - staff permission `seats.approve_swap`.
+- **Signup and the gate** (`POST /corporate/program-seats/signup`, `/business/start`): the company starts at
+  `ordering`.
+  - `core.permissions` refuses every workspace endpoint with `workspace_locked` until the first order is paid. Only
+    setup, catalogue, draft and checkout pass `allow_setup`. It is still one query.
+  - The frontend guard sends a company still being set up to `/business/start`.
+  - The user menu has "Train your team" and "Finish setting up …".
+- **Order** (one draft per company): server prices from the offer's tier in the company's currency, seats ≥ the
+  program's minimum, and live lines need an intake with enough places across every line.
+  - Checkout re-prices; `prices_changed` re-saves the draft.
+  - Changing an order closes its open Stripe page first; a page that was paid a moment ago is kept (`already_paid`).
+  - The webhook checks session, amount and currency, then opens the workspace. Expiry of the current page only
+    goes back to the draft.
+- **Allocation** (`/business/program-seats`): owner, admin or a manager for people in their units.
+  - It gives a company enrolment that covers exactly what the person's active seats pay for (`_resync`): the whole
+    program, or modules.
+  - Live seats go to the group with the most room. A full intake leaves the person in the cohort and cohort
+    managers are told.
+  - Placement locks are now advisory (`placement._advisory`), and capacity is counted through
+    `learning.cohort_seat_counts`, so company and learner requests can place without seeing others' rows.
+  - Release only before the learner has started.
+- **Swaps**:
+  - A request; the company step is skipped when the requester may approve it (owner, admin, or the new person's
+    line manager).
+  - Past the program's cut-off (progress % or cohort week), a reason is required and the request is flagged.
+  - The provider decides in Console › Seat swaps (`seats.approve_swap`). Approving revokes the old enrolment
+    (progress kept) and gives the seat to the new person, in the old group first.
+  - Every step is in `ProgramSeatEvent` and the audit log, with notifications to approvers and requester.
+- **Line manager view** (`/business/team`): progress, KSBs met, OTJ RAG and hours, and attendance, for the caller's
+  area. Keyset pages; a table on desktop, cards on a phone.
+- Console › Programs › Settings has a "Company seats" card.
+
+**Reviewer fixes**
+- An expiry webhook from an older Stripe page reset the order waiting on a newer one (charged, never credited).
+- A just-paid page could be replaced on a second "Pay".
+- `/business/start` fell into an endless skeleton after payment and for admins of open companies.
+- Staff placing a seat holder from the console created a free personal enrolment. `place()` now uses their company
+  enrolment.
+- A returning seat holder skipped the capacity check: a seat-less enrolment now leaves its group.
+- KSB data is now batched across programs.
+- Holders were stale after a company swap decision.
+- The new person's managers are now told about swaps.
+- The places check now spans every line on the same intake.
+- The team view now has a Ring.
+
+**Known limits (recorded, not fixed)**
+- Releasing one seat is refused once the person has started anything on that program, because the check is on the
+  shared enrolment; use a swap.
+- Console › Seat swaps shows the newest 100.
+- The team view's queries grow per program on the page (component lists) and per cohort schedule (cached), not
+  per row.
+
+**Client questions:** #35 updated; new #41 (company prices), #42 (holding intake places), #43 (company refunds),
+#44 (who approves for the company).
+
+**User actions:** tick **Approve company seat swaps** on a staff role (`docs/user-actions.md` #3).
+
+**Migrations the user must run** (`python manage.py migrate --database owner`; all additive):
+- `org.0003_onboarding_state`
+- `delivery.0007_seat_settings`
+- `learning.0015_enrollment_module_seat` (choices only, no SQL change)
+- `corporate.0017_program_seats`
+- `corporate.0018_program_seats_security` (RLS and composite foreign keys)
+- `engagement.0012_program_seat_templates` (inserts four notice wordings)
+
+## M21 B2C buying: program offers, seats, modules, monthly payments (2026-11-16, built; long tests pending by user decision)
+
+Brief: `docs/milestones/M21-b2c-buying.md`. Plan D5–D7, D10. **D29 is lifted for B2C**: a published program with an
+active offer is listed, priced ("From £X") and sold. B2B selling stays hidden until M22.
+
+**Tests: small targeted tests only.** The new `apps.commerce.tests.test_program_buying` (offer rules and permissions,
+listing, emptiest-group placement, full intakes, module-only access in the player, refund then token unlock, the whole
+monthly plan: first payment fulfils, repeats ignored, wrong amount refused, failure pauses after the grace period, late
+payment restores, last payment completes and cancels, token module unlock) passes. `core.tests.test_api_contract`,
+`core.tests.test_rls`, `apps.commerce.tests.test_commerce`, `test_unlock`, `apps.learning`, `apps.catalog`,
+`apps.delivery` and `core.tests.test_api_learner` pass. ruff (check + format), `makemigrations --check`, `tsc -b`,
+oxlint and `vite build` are clean; the main entry is still 140 kB.
+- **Watch in the long tests:** `core.tests.test_query_budgets.test_pages_do_not_query_per_row` failed twice on
+  pages M21 doesn't touch (compliance dashboard 14 → 13, then assignments 10 → 9): the count went **down** on the
+  second call, a warm-cache effect, not growth. Look at it in the full-suite run.
+
+- **Offers** (`commerce.ProgramOffer`, Console › Programs › program › **Offers**, `programs.build`): whole program or
+  one module, live or recorded, a price tier, tokens for recorded modules (D6), up to 24 monthly payments for live
+  places (D7). Switched off, never deleted. Database constraints back every rule.
+- **Intakes**: the program's planned/open/running cohorts with an active group; places left = the groups' spare
+  places capped by the cohort. Counted by the SECURITY DEFINER `learning.cohort_seat_counts` (numbers only).
+- **Checkout** (`POST /commerce/programs/checkout`): server-side price from the tier; a live place needs an intake.
+  Paid in full = a normal order (existing webhook, amount check, receipt, success page). After payment the learner
+  goes to the active group with the most spare places (`placement.place` re-checks under a lock); if a race filled
+  every group they keep the place in the cohort without a group and cohort managers are notified.
+- **What an enrolment covers**: `Enrollment.scope` (`program`/`modules`) and `learning.EnrollmentModule`. The player
+  refuses lessons in other modules (`module_locked`) and marks them locked with a "See buying options" link.
+- **Monthly payments** (`commerce.InstalmentPlan`, `InstalmentPayment`): Stripe Checkout in subscription mode with an
+  inline monthly price of ⌈price ÷ N⌉. Each paid invoice is counted once (unique invoice id); the first fulfils the
+  order; after the Nth the subscription is cancelled (an already-cancelled subscription counts as done). A failed
+  payment sets `grace_until` (setting `payments.instalment_grace_days`, default 7) and access pauses then; the
+  player says "Your access is paused" and the notice links to Account › Orders, which shows "2 of 6 paid" and an
+  "Update your card" button (Stripe billing portal). While a plan runs, nothing else is sold for that program.
+- **Tokens** (`POST /commerce/programs/unlock-module`): recorded modules, spent once under an advisory lock.
+- **Refunds**: a program paid in full follows the refund window, but only when it is all the learner holds in that
+  program; monthly plans are refunded by staff in Stripe (client question #34).
+- **Reviewer fixes**: a refunded module came back after any later unlock; a second purchase cut the enrolment loose
+  from its monthly plan (stopped plans kept access; paused learners were offered a second plan); a lost Stripe
+  cancel response could end a fully paid plan; refunding one line revoked access bought in other orders; one query
+  per order on the orders list; offers of a removed module couldn't be switched off and null PATCH values gave a 500;
+  paused learners got a generic error.
+- **Client questions**: #33 and #34 now record the defaults; new #39 (grace period) and #40 (who sets prices).
+- **Deferred**: coupons and promotions don't apply to programs; no waitlist when every group is full (#31); recorded
+  learners don't yet see the group's session recordings (a "master recording" per program).
+- **Migrations the user must run** (`python manage.py migrate --database owner`; all additive):
+  - `commerce.0011_program_offers`, `commerce.0012_program_offers_security`
+  - `learning.0013_enrollment_scope_modules`, `learning.0014_enrollment_modules_security` (a SECURITY DEFINER function)
+  - `engagement.0011_program_buying_templates` (inserts two notice wordings)
+
+## M20 Live sessions, recordings and workshops (2026-11-16, built; long tests pending by user decision)
+
+Brief: `docs/milestones/M20-live-sessions-workshops.md`. Plan D3, D14, D17–D19, D24. Teams setup guide:
+`docs/teams-setup.md` (the user action is in `docs/user-actions.md`).
+
+**Tests: small targeted tests only.** `apps.delivery` (including the new `test_live`: planning, scope, join window,
+manual and Teams attendance → OTJ with a fake Graph transport, workshop capacity, booking and CPD), `apps.learning`,
+`core.tests.test_api_contract` and `core.tests.test_rls` all pass. ruff (check + format) is clean,
+`makemigrations --check` is clean, and `tsc -b`, oxlint and `vite build` pass. The main entry is 140 kB (+2 kB for the
+new routes).
+
+- **Sessions** (`delivery.LiveSession`, one per group and live component):
+  - "Plan sessions" dates each one on the group's weekday inside the component's week, falling back to the next
+    working day if that day is off. Weekend groups keep their own day.
+  - Times come from the group timetable in the provider time zone (`general.time_zone`) and are stored in UTC.
+  - Re-planning moves only future sessions with no attendance, never brings back a cancelled one, and never deletes.
+  - Managers move or cancel sessions. Tutors (their own groups only) add links, mark attendance and upload
+    recordings.
+- **Teams** (`catalog/teams.py`, app-only Graph): meetings are created or moved after commit by Celery, and only the
+  attendee join link is kept. Attendance reports are matched by email, and staff marks always win. Recordings are
+  copied by the `delivery.live_followup` beat job (every 30 min) and **streamed through the Celery worker** to Bunny
+  (not a Bunny fetch: Graph needs a token).
+  - The job claims each recording first, tries up to 5 times, and one failure never stops the rest.
+  - It tries attendance for 2 days.
+  - Without Teams everything works by hand: paste a link, mark attendance, upload the recording (TUS).
+- **Attendance → OTJ**: present (≥ setting `learning.live_present_min`, default 3) gives one automatic OTJ entry per
+  session or workshop, capped at the length. Re-marking updates it and marking absent removes it.
+- **Workshops** (`delivery.Workshop`, `learning.WorkshopBooking`): capacity under a per-workshop advisory lock.
+  Learners only see their own rows under RLS, so places are counted by a SECURITY DEFINER function that returns
+  counts only. "Present" gives the workshop's expected OTJ minutes, and attended workshops add CPD to the record and
+  the program certificate.
+- **Join window**: the link is sent only from `learning.live_join_early_min` (default 15) minutes before until the
+  end, in the Sessions page and in the player.
+- **Screens**:
+  - console: the cohort group sheet's Live sessions, **My teaching** (`/console/teaching`, tutors) and
+    **Workshops** (`/console/workshops`);
+  - learner: **Live sessions** (`/learn/:slug/sessions`), linked from the player and My record.
+- **New settings**: `learning.live_present_min`, `learning.live_join_early_min`, `learning.recording_pull_after_min`,
+  `learning.teams_record_automatically` (client question #37).
+- **Reviewer fixes**:
+  - the workshop "Present" mark gave session minutes instead of expected OTJ minutes;
+  - tutors could write to any workshop (now read only, per brief B6; client question #38);
+  - re-planning brought back cancelled sessions;
+  - weekend groups got no sessions;
+  - the recording job could copy twice, and one error stopped the run;
+  - jobs weren't ordered and attendance was retried forever;
+  - N+1 on recording libraries;
+  - the player ignored cancellation and the join setting;
+  - a too-short or too-long timetable caused a 500;
+  - capacity changes raced bookings;
+  - a cleared Teams link left the session stranded;
+  - two meetings could be created at once;
+  - uploads were possible before the event;
+  - stale caches (booking after "full", My teaching);
+  - the workshop program picker showed only the first page;
+  - "Attended" showed under the threshold;
+  - phone overflow on long titles.
+- **Learned the hard way:** `SELECT … FOR UPDATE` on a reference table fails for learners under RLS (they can't
+  update it), so booking uses an advisory lock. Learner counts across users need a SECURITY DEFINER function.
+- **Deferred**:
+  - recorded-mode learners (the program's master recording) come with M21 buying modes;
+  - no notifications yet for moved or cancelled sessions;
+  - a recording upload's progress is lost if the sheet is closed, though the upload carries on.
+- **Migrations the user must run** (`python manage.py migrate --database owner`; all additive):
+  - `delivery.0005_livesession_workshop`, `delivery.0006_live_security`
+  - `learning.0010_sessionattendance_workshopbooking`, `learning.0011_live_security`,
+    `learning.0012_workshop_booked_counts` (a SECURITY DEFINER function)
+
+## M19 KSBs, off-the-job hours and CPD (2026-11-16, built; long tests pending by user decision)
+
+Brief: `docs/milestones/M19-ksb-otj-cpd.md`. Plan D12–D15, D25.
+
+**Tests: small targeted tests only.** `apps.delivery` (programs + records), `apps.learning`,
+`core.tests.test_api_contract` and `core.tests.test_rls` all pass. ruff (check + format) is clean,
+`makemigrations --check` is clean, and `tsc -b` and `vite build` pass. The main entry is still 138 kB.
+
+- **KSB standards** (catalog, reference data): `KsbStandard`, `KsbItem`, `ComponentKsb` (keyed by `lecture_key`,
+  so the mapping survives new versions).
+  - Import fetches by code from the setting `learning.ksb_feed_url`: https only, allow-listed hosts, no redirects,
+    capped at 2 MB. Upload of the same JSON (IfATE shape or a plain shape, object or list) is the fallback.
+  - Custom standards and items serve programs that aren't apprenticeships.
+  - Console paths are `/console/ksb-imports/fetch|upload` and `/console/ksb-standards`.
+- **Program settings** (`delivery.ProgramSetting`): the standard, the OTJ target (none / hours per week /
+  total hours), the amber % and the daily cap. Console program page has new **KSBs** and **Settings** tabs.
+- **Components** gain `expected_otj_min` (up to 1440: one ledger entry) and `cpd_min`, edited in the lesson editor
+  for programs.
+- **Off-the-job ledger** (`learning.OtjEntry`, unique per enrolment + source + ref): automatic entries when a
+  component is completed. Learner logs (cap per day, row lock, no future days or days before joining) wait for the
+  group's tutor or a cohort manager, who approves or rejects with a reason. The learner is notified. Nobody can
+  approve their own hours.
+- **RAG**: expected = target × teaching weeks **ended** in the learner's own span (from the day they joined).
+  `total_hours` is pro-rated to that span.
+- **KSB status** is computed from completion. **CPD** rolls up by module and program. **Module certificates** are
+  issued when a module's required components are done, and their codes verify on `/verify` (new SECURITY DEFINER
+  function).
+- **Screens**:
+  - learner `/learn/:slug/record` (Hours, KSBs, CPD, Certificates), linked from the player and from My learning;
+  - console "Hours to approve" (`/console/programs/otj`);
+  - a learner record sheet from the cohort page.
+- **Reviewer fixes**:
+  - RAG counted a week as owed on its first day, and owed late joiners weeks they couldn't log;
+  - self-approval was possible;
+  - OTJ minutes over 1440 were cut silently;
+  - module certificate codes didn't verify;
+  - the completion hook re-inserted every entry and queried Module and User on every flush (now it inserts only
+    what is new);
+  - My record went stale after completing a component;
+  - hand-written response types, the upload shape (list), the feed size cap, the reject reason carrying over,
+    the chip labels, and a clearer message when a tutor opens another group's record.
+- **Deferred**:
+  - module certificate PDF and KSBs on the program certificate (D25), which use the existing templates later;
+  - the CPD roll-up by week;
+  - the company (line manager) view, which comes in M22;
+  - the Skills England feed URL is unverified, so upload is the fallback.
+- **Migrations the user must run** (`python manage.py migrate --database owner`; all additive):
+  - `catalog.0013`, `catalog.0014_ksb_security`
+  - `delivery.0003_programsetting`, `delivery.0004_program_settings_security`
+  - `learning.0007`, `learning.0008_programs_security`, `learning.0009_verify_module_certificate`
+  - `engagement.0010_program_record_templates`
+
+## M18 Program structure (2026-11-16, built; long tests pending by user decision)
+
+Brief: `docs/milestones/M18-program-structure.md`. Plan and decisions D1–D28: `docs/features/programs-v1/plan.md`.
+
+**Tests: small targeted tests only (user decision, 2026-11-16).** Ran `apps.delivery`, `apps.catalog`,
+`core.tests.test_api_contract` and `core.tests.test_rls`, plus `apps.commerce.tests.test_unlock` and `test_packages`
+after the review fixes (47 tests, all pass). **Long tests pending:** the full
+suite, `e2e_m18.js`, the phone check and the light/dark screenshots. ruff (check + format) clean,
+`makemigrations --check` clean, `tsc -b` and `vite build` pass. The main entry is 137 kB with vendors split out,
+and the new pages are lazy chunks.
+
+- **Programs in the catalog.** `Course.kind` is short or program. New `Module` per course version
+  (`module_key` is stable across drafts). `Section.module` makes sections the program's weeks, and lectures are
+  its components. Weeks keep one global position order (module by module), so progress, the player and certificates
+  read them unchanged. Studio: `POST /studio/programs` (needs `programs.build`), plus module add, rename, reorder
+  and delete (only when empty). Weeks reorder inside a module, and move between modules with a drop. The publish
+  checklist asks for at least one module, no empty module and every week in a module.
+- **Staff roles** (`identity.StaffRole`, `StaffRoleAssignment`, `core/staff_perms.py`). Permissions:
+  `programs.build`, `cohorts.manage`, `groups.teach`, `roles.manage`, `reports.view`. Default roles are Admin,
+  Curriculum designer, Cohort manager and Tutor. The seed migration gives Admin to every existing staff user.
+  System roles can't be deleted, and the last role manager can't be removed.
+- **Delivery app** (schema `delivery`): `Cohort`, `CohortModule` (optional per-module start), `Group` (tutor
+  with `groups.teach`, weekday and times, capacity), `Holiday` (GOV.UK bank holidays for 3 divisions, synced
+  monthly by Celery beat and by `sync_bank_holidays`), `Closure` (one cohort or provider-wide). A pure calendar
+  (`calendar.py`) dates the weeks from the cohort start. It skips weekends, holidays and closures, turns a week
+  with no working day into a break and warns on overlapping module starts. Schedules are cached in Redis, and a
+  bump on any change refreshes them. Placement (`learning/placement.py`) locks the group and checks group and
+  cohort capacity.
+- **Console** (`/console/programs`, `/console/programs/:id`, `/console/cohorts/:id`, `/console/roles`).
+  Programs list, new program, provider closures and holiday sync. Program: cohorts and structure. Cohort: status,
+  edit, schedule with module start overrides, groups with members (add by email), closures. Staff roles: role
+  cards, permissions and members. Every change is audited. New art variant `curriculum`.
+- **Learner.** The player groups weeks under modules, with each week's dates, days off and a "This week" badge,
+  and shows the learner's group (timetable and tutor). The course page shows "Program content" (modules, weeks,
+  components).
+
+**Migrations the user must run** (owner connection; all additive):
+`core.0004_delivery_schema`, `catalog.0010_course_kind_module_section_module_and_more`, `catalog.0011_module_security`,
+`catalog.0012_module_position_unique`, `identity.0005_staffrole_staffroleassignment`, `identity.0006_staff_roles_seed_and_security`, `delivery.0001_initial`, `delivery.0002_security`,
+`learning.0006_enrollment_cohort_enrollment_group_and_more`. Then run `python manage.py sync_bank_holidays` once.
+
+**Reviewer pass (2026-11-16), fixed:**
+- Deleting a group with only ended enrolments gave a 500 (protected FK). Any enrolment now blocks the delete with a clear message.
+- Cohort end dates went stale after a program was republished. Publishing now refreshes them after commit.
+- "Last role manager" was never enforced, because any superuser counted. Superusers no longer count, and role
+  changes lock every manager role first (no write skew).
+- Curriculum designers could list learners' names and emails. Group members now need `cohorts.manage`, in the
+  API and the UI.
+- My learning now shows the group, the cohort and this (or the next) week's dates.
+- The default cohort calendar and the minimum working days per teaching week are provider settings
+  (`learning.program_calendar`, `learning.program_min_working_days`), not constants.
+- Module positions are unique per version (a deferred constraint, migration `catalog.0012_module_position_unique`).
+  Module and week changes lock the version row.
+- Schedule cache bumps run after commit, and writers compute end dates fresh. Provider-wide closures and the
+  holiday sync refresh end dates inline, without needing a worker. A calendar error is a 400, not a 500.
+- Closures and module start dates are refused on finished or cancelled cohorts. A cohort's capacity can't drop
+  below its placed learners, and group edits lock the group (capacity race).
+- The programs list uses a keyset cursor. It returns `can_build`, `can_manage` and the default calendar, so the
+  page hides buttons people can't use.
+- Weeks can move to another module from the ••• menu, so keyboard and touch users can do it, and an empty module
+  can receive a week. "Add week" only spins on its own module.
+- A superuser who isn't staff now gets every permission. Identity 0006 seeds a frozen copy of the default roles.
+  `delivery` was added to the RLS structure test.
+- Route names differ from the brief: `/studio/modules/{id}/weeks/order`, and console `/program-cohorts/…`,
+  `/program-groups/…` and `/program-closures/…`.
+
+**Decided by the user (2026-11-16): programs are hidden from selling until M21.** `Course.SELLABLE_KINDS` filters
+the catalogue and search, cart and checkout, plan enrolment, token unlocks, packages and the business library.
+Programs need no price to publish. The course page shows "Places are arranged by your training provider"
+instead of buy buttons. Learners join only through staff placing them in a group.
+
+Bugs found and fixed while building: Ninja path params broke under `from __future__ import annotations`.
+`POST /programs/closures` was caught by `/programs/{program_id}`, so the routes moved to `/program-*` prefixes.
+An unsaved `Group`'s pk is a DB default, so the code now checks `_state.adding`. Two schema names duplicated
+corporate live training, so they were renamed.
+
+## M17 HR system: Breathe HR (2026-11-16, built; tests pending by user decision)
+
+**Tests: not written or run (user decision, 2026-11-16: "finish breathe and skip the tests").** No backend
+tests for `apps.integrations`, no `e2e_m17.js`, no phone check or screenshots, no reviewer pass. Checked with
+ruff (check + format), `makemigrations --check` (no changes), `tsc -b` and `vite build`. The brief's test list
+(`docs/milestones/M17-hr-system.md`) is the to-do list when tests come back.
+
+- **Backend app `apps.integrations`** (schema `integrations`, 7 tables, all `company_only` RLS, composite
+  same-company foreign keys): `HrConnection`, `ExternalPerson`, `ExternalDepartment`, `HrTrainingMap`,
+  `ExternalTrainingRecord`, `ExternalLeave`, `HrSyncRun`.
+  - API key encrypted at rest (Fernet, key from `CREDENTIAL_ENCRYPTION_KEY`); never returned by any endpoint.
+  - Breathe client (httpx): host allow-list (`api.breathehr.com`, `api.sandbox.breathehr.info`), no redirects,
+    rate limit, retries honouring `Retry-After`, `Link` pagination with a loop guard.
+  - Sync: **hourly** (Celery beat `hr-sync-hourly`, minute 15, one run per company per hour) plus **Sync now**
+    (Q24). One run at a time per company (409 `already_running`).
+  - People: never added automatically. Matched by email as a suggestion; an admin links, invites (normal
+    invitation email) or ignores. Leavers are **flagged**, never removed (Q27). Departments link to units (or
+    create one); linked people are placed in it (add-only), line managers become unit managers (Q25/26).
+  - Training: each Breathe course title maps to a requirement; records become `CompletionRecord`s (source
+    import, expiry from the requirement), then compliance recomputes and renewals open (Q28).
+  - Leave: approved leave only, never the reason; "On leave until …" for admins and managers (Q23).
+  - Notifications: `hr_sync_failed`, `hr_people_to_review`, `hr_connection_attention` (insert-only migration),
+    all linking to `/business/hr-system`. Every change is audited.
+  - 19 endpoints under `/api/v1/integrations/hr…`, all typed (`Hr*` schemas); prefix added to `TYPED_PREFIXES`.
+    Admin for changes, manager (own scope) for reads.
+- **Frontend:** `/business/hr-system` (Company nav, "HR system", new `handover` backdrop). Connect card (key,
+  live/sandbox, feature switches, what we read and never do); connection card (status, last sync, Sync now,
+  Check connection, Replace key, Pause/Resume, Settings, Disconnect); four counters; tabs People (review queue,
+  filters, search, side sheet to link / choose someone / invite / ignore / review again), Departments, Training,
+  History. Polls every 3 s while a sync runs, then refreshes people, units and compliance. Managers see it
+  read-only. Badges elsewhere: Person page "Synced from Breathe HR", "Leaver in …", leave; People page "On leave
+  until …" (one call per page); Units page linked Breathe departments.
+- **Entry chunk 127 KB → 133.6 KB**: the two new backdrops (`folio`, `handover`) and the footer/hash-scroll code
+  load on every page. The HR page is its own 30 KB chunk.
+
+### Migrations the user must run (dev and e2e; adds a schema, tables and rows only)
+`python manage.py migrate --database owner`: core **0003_integrations_schema** (creates schema `integrations` +
+grants), integrations **0001_initial** and **0002_security** (RLS + composite keys), engagement
+**0009_hr_system_templates** (inserts three notification wordings). Check first with `sqlmigrate`.
+**Dev: applied by the user on 2026-11-16 (SQL reviewed first; `check` clean). e2e: still to run.**
+
+### Setting the user must add
+`CREDENTIAL_ENCRYPTION_KEY` in `backend/.env` (any random string, 32+ characters; keep it: changing it makes
+saved HR keys unreadable and admins must re-enter them). Without it the page says HR connections aren't set
+up yet. New dependency: `cryptography` (approved in the brief); run `pip install -r requirements.txt`.
+
+## Polish and client answers (2026-11-16)
+
+- Client questions 23–28 answered and closed (leave to admins and managers, hourly + Sync now, departments,
+  managers, leavers flagged, training counts). Q29: **privacy and terms pages written** (`/privacy`, `/terms`,
+  live values from settings: platform name, contact email, refund window, VAT); still need the client's legal
+  review. Sign-up links to both.
+- New console setting `general.contact_email` (validated as an email). Footer rebuilt as four real columns
+  (Learn, Business, LearnHub, Legal); mail links only appear once the contact email is set. `#teams` and other
+  hash links scroll to their target after the page loads.
+- "Publish without review" restored in the studio submit (the M5 brief still lists it).
+
+## Testing round (2026-11-16)
+
+Full backend suite run and every failure fixed. All but two were stale tests after the team's rule changes
+(publish now needs a cash/free price, error shape, seat counts, query budgets warming caches): tests updated,
+new helper `priced_for_publish` in `core/tests/factories.py`. **Two real bugs fixed:** B2C subscription checkout
+returned 500 (wrong gateway call signature; a new autospec test pins it), and invalid `pattern` regexes on three
+console forms (browsers rejected them). E2E M1 and M5 passed; M4, M6 and demo not re-run (tests then paused).
+
 ## Step 2: M6 polish, code part (2026-11-15)
 
 **Tests: pending (user decision).** Not done yet, by decision: query-budget tests, Lighthouse, `e2e_demo.js`,

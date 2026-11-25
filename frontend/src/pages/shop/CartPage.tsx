@@ -12,12 +12,14 @@ import { useCourses } from '@/features/catalog/api'
 import { CourseGrid } from '@/features/catalog/CourseCard'
 import { CourseRow } from '@/features/catalog/CourseRow'
 import { useCart, useCheckout, useCurrencies, useRemoveFromCart, useToggleWishlist } from '@/features/commerce/api'
+import { usePublicSettings } from '@/features/platform/api'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/lib/currency'
 import { money } from '@/lib/format'
 import { useNavigate } from '@/lib/router'
 
 export function CartPage() {
+  const refundDays = usePublicSettings().settings['payments.refund_window_days']
   const [coupon, setCoupon] = useState<string | undefined>()
   const [code, setCode] = useState('')
   const { data: cart, isLoading, error, refetch, isFetching } = useCart(coupon)
@@ -122,7 +124,7 @@ export function CartPage() {
                 <Button size="lg" className="mt-5 w-full" loading={checkout.isPending} disabled={isFetching} onClick={pay}>
                   <Lock /> {cart.total_minor ? 'Checkout' : 'Enrol now'}
                 </Button>
-                <p className="mt-2 text-center text-xs text-muted">Secure payment by Stripe · 30-day refunds</p>
+                <p className="mt-2 text-center text-xs text-muted">Secure payment by Stripe · {refundDays}-day refunds</p>
 
                 <div className="mt-5 border-t border-border pt-5">
                   {cart.coupon ? (

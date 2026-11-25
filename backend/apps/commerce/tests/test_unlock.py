@@ -11,7 +11,10 @@ from core.tenancy import tenant_context
 from core.tests.base import SchemaTransactionTestCase
 
 
-class UnlockTestCase(SchemaTransactionTestCase):
+class UnlockFixture:
+    """A learner, a staff user and a published token-priced course (shared with
+    test_course_access_enrol)."""
+
     def setUp(self):
         tag = uuid.uuid4().hex[:8]
         with tenant_context(user_id=None, staff=True):
@@ -97,6 +100,8 @@ class UnlockTestCase(SchemaTransactionTestCase):
                 actor=self.staff,
             )
 
+
+class UnlockTestCase(UnlockFixture, SchemaTransactionTestCase):
     # ---------------------------------------------------------------- lecture unlock
     def test_unlock_lecture_spends_tokens(self):
         self._grant(50)

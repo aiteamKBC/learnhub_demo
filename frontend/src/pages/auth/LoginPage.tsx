@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -6,15 +7,27 @@ import { Field, Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password'
 import { AuthError, useLogin, useMfaAuthenticate } from '@/features/identity/auth'
 import { usePublicSettings } from '@/features/platform/api'
-import { safeNext } from '@/lib/next'
 
+import { AudienceSwitch, orgSignupNext, useAudience } from './AudienceSwitch'
 import { AuthShell } from './AuthShell'
 import { SocialButtons } from './SocialButtons'
 import { Link, useNavigate } from '@/lib/router'
 
 export function LoginPage() {
   const [params] = useSearchParams()
-  const next = safeNext(params.get('next'))
+  // organisations land in their workspace (/business sends new companies on to set-up)
+  const { audience, next, nextParam } = useAudience()
+  const org = audience === 'org'
+  const qc = useQueryClient()
+  // the sign-in hooks refetch the user before these callbacks run. On the organisation side,
+  // someone who runs a company opens its workspace; someone who runs none is offered to set one
+  // up (the workspace guard would otherwise send them to their own learning)
+  const land = () => {
+    if (!org || nextParam) return navigate(next, { replace: true })
+    const me = qc.getQueryData<{ memberships?: { role: string }[] } | null>(['me'])
+    const manages = me?.memberships?.some((m) => ['owner', 'admin', 'manager'].includes(m.role))
+    navigate(manages ? '/business' : orgSignupNext, { replace: true })
+  }
   const navigate = useNavigate()
   const login = useLogin()
   const [email, setEmail] = useState('')
@@ -24,10 +37,12 @@ export function LoginPage() {
   const [code, setCode] = useState('')
   const { settings } = usePublicSettings()
   const err = login.error instanceof AuthError ? login.error : null
+  const signupQuery = new URLSearchParams([...(org ? [['as', 'org']] : []), ...(params.get('next') ? [['next', next]] : [])]).toString()
+  const signupHref = signupQuery ? `/signup?${signupQuery}` : '/signup'
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    login.mutate({ email, password }, { onSuccess: (r) => (r === 'mfa' ? setStep('code') : navigate(next, { replace: true })) })
+    login.mutate({ email, password }, { onSuccess: (r) => (r === 'mfa' ? setStep('code') : land()) })
   }
 
   if (step === 'code') {
@@ -38,7 +53,7 @@ export function LoginPage() {
           className="grid gap-4"
           onSubmit={(e) => {
             e.preventDefault()
-            mfa.mutate(code.replace(/\s/g, ''), { onSuccess: () => navigate(next, { replace: true }) })
+            mfa.mutate(code.replace(/\s/g, ''), { onSuccess: land })
           }}
         >
           <Field label="Code" error={codeErr?.fields.code ?? (codeErr && !Object.keys(codeErr.fields).length ? codeErr.message : undefined)}>
@@ -57,20 +72,23 @@ export function LoginPage() {
 
   return (
     <AuthShell
-      title="Welcome back"
+      title={org ? 'Organisation log in' : 'Welcome back'}
       subtitle={
         settings['access.registration_enabled'] ? (
           <>
-            New to {settings['general.platform_name']}?{' '}
-            <Link to={`/signup${params.get('next') ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-medium text-primary hover:underline">
-              Create an account
+            {org ? 'Manage your team’s training and compliance. New here? ' : `New to ${settings['general.platform_name']}? `}
+            <Link to={signupHref} className="font-medium text-primary hover:underline">
+              {org ? 'Set up your organisation' : 'Create an account'}
             </Link>
           </>
+        ) : org ? (
+          'Log in to manage your team’s training.'
         ) : (
           'Sign in to continue.'
         )
       }
     >
+      <AudienceSwitch path="/login" />
       <SocialButtons next={next} />
       <form onSubmit={submit} className="grid gap-4" noValidate>
         {err && !Object.keys(err.fields).length ? (

@@ -64,9 +64,13 @@ page and faded out so content stays readable. Purely decorative (`aria-hidden`).
 | Unlimited plan, course bundles, review your order, orders | ribbons |
 | Business: company training, packages, seats | seats |
 | Business and learner: live training | timetable |
+| Privacy policy and terms of use | folio |
+| Business: HR system (Breathe HR) | handover |
 | Business: purchases, refunds and changes | ribbons |
 | Console: token pricing, token wallets / packages | coins / ribbons |
 | Console: company training / live training / refunds and departures | seats / timetable / ribbons |
+| Console: programs and a program (M18) | curriculum (module bands holding week blocks) |
+| Console: a cohort / staff roles (M18) | timetable / orgchart |
 
 These pages sit inside a layout that already draws the route's artwork, so they never
 render their own `<Backdrop>` (that doubled the shapes on the B2C pages until 2026-11-15).

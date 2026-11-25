@@ -465,6 +465,19 @@ class OrderItem(MixedTenantModel):
         "learning.Enrollment", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     refunded_at = models.DateTimeField(null=True, blank=True)
+    # Programs (M21): what was bought (whole program or a module, live or recorded) and,
+    # for a live seat, the intake chosen at checkout
+    offer = models.ForeignKey(
+        "commerce.ProgramOffer",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        db_index=False,
+    )
+    cohort = models.ForeignKey(
+        "delivery.Cohort", on_delete=models.PROTECT, null=True, blank=True, related_name="+", db_index=False
+    )
 
     class Meta:
         db_table = table(SCHEMA, "order_items")
@@ -855,6 +868,7 @@ class TokenSpend(BaseModel):
         COURSE = "course", "Course"
         LECTURE = "lecture", "Lecture"
         MATERIAL = "material", "Material"
+        MODULE = "module", "Program module"  # M21: target_id = the offer
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+", db_index=False)
     scope = models.CharField(max_length=12, choices=Scope.choices)
@@ -941,3 +955,93 @@ class CashPackageCourse(BaseModel):
         constraints = [
             models.UniqueConstraint(fields=["package", "course"], name="uq_cpkg_course"),
         ]
+
+
+# ======================================================================== programs (M21)
+class ProgramOffer(BaseModel):
+    """How a program (or one of its modules) is sold to a person (Programs plan D5-D7, D10).
+
+    module_key NULL = the whole program. A live offer sells a seat in a cohort; a recorded
+    offer sells self-paced access. Cash prices use the same tiers as courses; a recorded
+    module may also be unlocked with tokens (D6). Offers are switched off, never deleted
+    (orders point at them). Read by everyone (RLS reference), written by staff."""
+
+    class Mode(models.TextChoices):
+        LIVE = "live", "Live in a cohort"
+        RECORDED = "recorded", "Recorded, self-paced"
+
+    program = models.ForeignKey("catalog.Course", on_delete=models.CASCADE, related_name="offers")
+    module_key = models.UUIDField(null=True, blank=True)
+    mode = models.CharField(max_length=10, choices=Mode.choices)
+    tier = models.ForeignKey(PriceTier, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    token_price = models.PositiveIntegerField(null=True, blank=True)
+    instalments_max = models.PositiveSmallIntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = table(SCHEMA, "program_offers")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["program", "mode"], condition=Q(module_key__isnull=True), name="uq_offer_program_mode"
+            ),
+            models.UniqueConstraint(
+                fields=["program", "module_key", "mode"],
+                condition=Q(module_key__isnull=False),
+                name="uq_offer_module_mode",
+            ),
+            models.CheckConstraint(
+                condition=Q(token_price__isnull=True)
+                | Q(module_key__isnull=False, mode="recorded", token_price__gt=0),
+                name="ck_offer_tokens_recorded_module",
+            ),
+            models.CheckConstraint(
+                condition=Q(tier__isnull=False) | Q(token_price__isnull=False), name="ck_offer_has_price"
+            ),
+            models.CheckConstraint(
+                condition=Q(instalments_max__gte=1, instalments_max__lte=24)
+                & (Q(instalments_max=1) | Q(mode="live", tier__isnull=False)),
+                name="ck_offer_instalments",
+            ),
+        ]
+        indexes = [models.Index(fields=["program", "is_active"], name="ix_offer_program")]
+
+
+class InstalmentPlan(MixedTenantModel):
+    """A program bought in N monthly payments (D7): a Stripe subscription that we cancel
+    after the Nth paid invoice. org_id/user_id come from the order (trigger)."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Awaiting the first payment"
+        ACTIVE = "active", "Paying"
+        PAST_DUE = "past_due", "Payment overdue"
+        COMPLETED = "completed", "Paid in full"
+        CANCELLED = "cancelled", "Cancelled"
+
+    order = models.OneToOneField(Order, on_delete=models.PROTECT, related_name="instalment_plan")
+    count = models.PositiveSmallIntegerField()
+    amount_minor = models.PositiveIntegerField()  # each payment, in the order's currency
+    paid_count = models.PositiveSmallIntegerField(default=0)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    stripe_session_id = models.CharField(max_length=128, null=True, blank=True, unique=True)
+    stripe_subscription_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
+    grace_until = models.DateTimeField(null=True, blank=True)  # access pauses then unless paid
+    last_failed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = table(SCHEMA, "instalment_plans")
+        constraints = [
+            models.CheckConstraint(condition=Q(count__gte=2, count__lte=24), name="ck_instalment_count"),
+        ]
+        indexes = [models.Index(fields=["user", "-created_at"], name="ix_instalment_user")]
+
+
+class InstalmentPayment(MixedTenantModel):
+    """One paid Stripe invoice of a plan; the unique invoice id makes counting idempotent."""
+
+    plan = models.ForeignKey(InstalmentPlan, on_delete=models.PROTECT, related_name="payments")
+    stripe_invoice_id = models.CharField(max_length=64, unique=True)
+    amount_minor = models.PositiveIntegerField()
+    paid_at = models.DateTimeField()
+
+    class Meta:
+        db_table = table(SCHEMA, "instalment_payments")

@@ -29,9 +29,13 @@ class NoPriceSet(Exception):
 
 @transaction.atomic
 def unlock_lecture(*, user, lecture_id: UUID, actor=None, request=None) -> ContentEntitlement:
-    from apps.catalog.models import Lecture
+    from apps.catalog.models import Course, Lecture
 
-    lec = Lecture.objects.select_related("section__version__course").filter(pk=lecture_id).first()
+    lec = (
+        Lecture.objects.select_related("section__version__course")
+        .filter(pk=lecture_id, section__version__course__kind__in=Course.SELLABLE_KINDS)
+        .first()
+    )
     if lec is None:
         raise ValueError("Lecture not found.")
 
@@ -169,7 +173,7 @@ def unlock_material(*, user, material_id: UUID, actor=None, request=None) -> Con
 def unlock_course(*, user, course_id: UUID, actor=None, request=None) -> ContentEntitlement:
     from apps.catalog.models import Course
 
-    course = Course.objects.filter(pk=course_id).first()
+    course = Course.objects.filter(pk=course_id, kind__in=Course.SELLABLE_KINDS).first()
     if course is None:
         raise ValueError("Course not found.")
 
@@ -240,10 +244,18 @@ FULL_ACCESS_SOURCES = (
 )
 
 
+@transaction.atomic
 def enrol_on_course_access(*, user, course_id: UUID):
     """Full-course access (token unlock, cash package, staff grant) opens the player through a
-    normal personal enrolment, linked to the entitlement. Idempotent: returns any existing one.
+    normal personal enrolment, linked to the entitlement. Idempotent.
+
+    The enrolment always matches the entitlement, because that is what the course page promises
+    ("Unlocked with tokens", "Start learning"): an old enrolment that was refunded, expired or ends
+    sooner (a lapsed plan, a limited-access purchase) is brought back in line, and the course's
+    access period does not cut lifetime access short (client question 30).
     The Unlimited plan enrols through `services.enrol_with_plan` instead."""
+    from django.db.models import F
+
     from apps.catalog.models import Course
     from apps.learning import services as learning
     from apps.learning.models import Enrollment
@@ -258,7 +270,7 @@ def enrol_on_course_access(*, user, course_id: UUID):
             revoked_at__isnull=True,
         )
         .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now()))
-        .order_by("granted_at")
+        .order_by(F("expires_at").desc(nulls_first=True))  # the longest-lasting access wins
         .first()
     )
     if ent is None:
@@ -271,9 +283,26 @@ def enrol_on_course_access(*, user, course_id: UUID):
         if ent.source == ContentEntitlement.Source.ADMIN_GRANT
         else Enrollment.Source.PURCHASE
     )
-    return learning.enrol(
-        user=user, course=course, source=source, source_ref=ent.id, access_expires_at=ent.expires_at
+    e = (
+        Enrollment.objects.select_for_update()
+        .filter(user=user, course=course, org__isnull=True)
+        .exclude(status=Enrollment.Status.SUPERSEDED)
+        .first()
     )
+    if e is None:
+        e = learning.enrol(
+            user=user, course=course, source=source, source_ref=ent.id, access_expires_at=ent.expires_at
+        )
+    lapsed = e.status in (Enrollment.Status.REVOKED, Enrollment.Status.EXPIRED)
+    ends_sooner = e.access_expires_at is not None and (
+        ent.expires_at is None or e.access_expires_at < ent.expires_at
+    )
+    if lapsed or ends_sooner:
+        if lapsed:
+            e.status = Enrollment.Status.ACTIVE
+        e.source, e.source_ref, e.access_expires_at = source, ent.id, ent.expires_at
+        e.save(update_fields=["status", "source", "source_ref", "access_expires_at", "updated_at"])
+    return e
 
 
 def _instructor_id(course_id):

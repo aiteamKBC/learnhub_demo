@@ -240,8 +240,9 @@ export function LiveStage(props: StageProps) {
   const refresh = useRefreshProgress(props.enrollmentId)
   const starts = live?.starts_at ? new Date(live.starts_at).getTime() : null
   const ends = starts && live?.duration_min ? starts + live.duration_min * 60_000 : null
-  const state = !starts ? 'unscheduled' : now < starts ? 'upcoming' : ends && now > ends ? 'ended' : 'live'
-  const joinOpensIn = starts ? starts - 15 * 60_000 - now : 0
+  const early = live?.join_early_min ?? 15
+  const state = live?.status === 'cancelled' ? 'cancelled' : !starts ? 'unscheduled' : now < starts ? 'upcoming' : ends && now > ends ? 'ended' : 'live'
+  const joinOpensIn = starts ? starts - early * 60_000 - now : 0
   const providerName = live?.provider === 'teams' ? 'Microsoft Teams' : 'the live classroom'
 
   // the join link is only sent from 15 minutes before; fetch it when that moment comes
@@ -281,6 +282,8 @@ export function LiveStage(props: StageProps) {
               <Badge tone="primary">Starts in {until(starts! - now)}</Badge>
             ) : state === 'ended' ? (
               <Badge>Ended</Badge>
+            ) : state === 'cancelled' ? (
+              <Badge tone="danger">Cancelled</Badge>
             ) : null}
           </div>
         </div>
@@ -293,11 +296,17 @@ export function LiveStage(props: StageProps) {
             </Button>
           ) : (
             <p className="inline-flex items-center gap-2 text-sm text-muted">
-              <Clock className="size-4" /> {state === 'ended' ? 'This session has finished.' : `The ${providerName} link appears here 15 minutes before the start.`}
+              <Clock className="size-4" /> {state === 'cancelled' ? 'This session was cancelled.' : state === 'ended' ? 'This session has finished.' : `The ${providerName} link appears here ${early} minutes before the start.`}
             </p>
           )}
         </div>
       </div>
+      {lecture.body ? (
+        <div className="mt-8">
+          <h2 className="mb-2 text-sm font-semibold text-muted">About this session</h2>
+          <Html html={lecture.body} />
+        </div>
+      ) : null}
       {lecture.resources?.length ? <Resources {...props} className="mt-8" /> : null}
       <CompleteBar {...props} className="mt-10" />
     </Sheet>

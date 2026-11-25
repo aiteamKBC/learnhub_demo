@@ -1,4 +1,4 @@
-import { Award, Bell, BookOpen, ClipboardCheck, Compass, Heart, LifeBuoy, ReceiptText, Settings, Trophy } from 'lucide-react'
+import { Award, Bell, BookOpen, ClipboardCheck, Compass, Heart, HeartHandshake, LifeBuoy, ReceiptText, Settings, Trophy } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 
 import { Backdrop } from '@/components/art/backdrops'
@@ -14,6 +14,7 @@ const items = [
   { to: '/wishlist', label: 'Wishlist', Icon: Heart },
   { to: '/learn/certificates', label: 'Certificates', Icon: Award },
   { to: '/learn/achievements', label: 'Achievements', Icon: Trophy },
+  { to: '/learn/inclusion', label: 'Inclusion test', Icon: HeartHandshake },
   { to: '/notifications', label: 'Notifications', Icon: Bell },
   { to: '/account/orders', label: 'Purchase history', Icon: ReceiptText },
   { to: '/support', label: 'Help & support', Icon: LifeBuoy },

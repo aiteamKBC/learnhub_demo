@@ -11,8 +11,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api, unwrap } from '@/api/client'
+import { useCurrencies } from '@/features/commerce/api'
 import { useMe } from '@/features/identity/auth'
 import { useCurrency } from '@/lib/currency'
+import { money } from '@/lib/format'
 
 /** Personal space: money and wallet live on the person, not the selected company. */
 const PERSONAL = { 'X-Org-Id': '' }
@@ -23,6 +25,27 @@ export function returnUrl(path: string): string {
 }
 
 export type UnlockScope = 'course' | 'lecture' | 'material'
+
+/** People's words for the wallet's codes (backend: TokenGrant.Source, TokenLedgerEntry.Kind). */
+export const GRANT_SOURCE_LABEL: Record<string, string> = { pack: 'Token pack', topup: 'Top-up', admin: 'Added by our team', bonus: 'Bonus', refund: 'Refund' }
+export const LEDGER_KIND_LABEL: Record<string, string> = { grant: 'Tokens added', spend: 'Spent', expiry: 'Expired', admin_clawback: 'Removed by our team', refund_reversal: 'Refund' }
+
+/** Formats a price in minor units with its currency's real exponent (JPY has none, some
+ * currencies have three). Uses the server's currency list, else the browser's default. */
+export function useMoney() {
+  const { data: currencies } = useCurrencies()
+  return (minor: number, currency: string) => {
+    let exponent = currencies?.find((c) => c.code === currency)?.exponent
+    if (exponent == null) {
+      try {
+        exponent = new Intl.NumberFormat('en-GB', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits ?? 2
+      } catch {
+        exponent = 2
+      }
+    }
+    return money(minor, currency, exponent)
+  }
+}
 
 // ------------------------------------------------------------------ wallet
 export function useWalletBalance(opts: { enabled?: boolean; poll?: boolean; baseline?: number } = {}) {
@@ -159,11 +182,19 @@ export function useEnrolWithAccess() {
 }
 
 // ------------------------------------------------------------------ cash packages
-export function useCashPackages() {
+/** With `watch` (a package just paid for), polls for about a minute until the server shows
+ * every course in it as owned: the webhook grants them, never the return URL. */
+export function useCashPackages(watch?: string | null) {
   const { code } = useCurrency()
   return useQuery({
     queryKey: ['b2c-cash-packages', code],
     queryFn: () => unwrap(api.GET('/api/v1/commerce/tokens/packages', { params: { query: { currency: code } } })),
+    refetchInterval: (q) => {
+      if (!watch) return false
+      const pkg = q.state.data?.find((p) => p.id === watch)
+      if (pkg && pkg.owned_count >= pkg.courses.length) return false
+      return q.state.dataUpdateCount < 40 ? 1500 : false
+    },
   })
 }
 

@@ -68,7 +68,7 @@ function CreateCompany({ open, onOpenChange, onCreated }: { open: boolean; onOpe
         <form className="grid gap-4" onSubmit={submit}>
           <Field label="Company name">{(f) => <Input {...f} value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={200} />}</Field>
           <Field label="Web address name" hint="Lower-case letters, numbers and dashes.">
-            {(f) => <Input {...f} value={slug || slugify(name)} onChange={(e) => setSlug(slugify(e.target.value))} required pattern="[a-z0-9-]+" />}
+            {(f) => <Input {...f} value={slug || slugify(name)} onChange={(e) => setSlug(slugify(e.target.value))} required pattern="[a-z0-9\-]+" />}
           </Field>
           <Field label="Owner's email">{(f) => <Input {...f} type="email" value={owner} onChange={(e) => setOwner(e.target.value)} required />}</Field>
           <div className="grid gap-4 sm:grid-cols-2">

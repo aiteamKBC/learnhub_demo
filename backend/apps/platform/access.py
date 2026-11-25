@@ -96,12 +96,22 @@ def _legacy_enrollment_allows(user, course_id, now) -> bool:
     access window grants access even before the one-off backfill migration runs."""
     from apps.learning.models import Enrollment
 
-    qs = Enrollment.objects.filter(
-        user=user,
-        course_id=course_id,
-        org__isnull=True,
-        status__in=(Enrollment.Status.ACTIVE, Enrollment.Status.COMPLETED),
-    ).filter(Q(access_expires_at__isnull=True) | Q(access_expires_at__gt=now))
+    # An enrolment opened from an entitlement (commerce.unlock.enrol_on_course_access: token
+    # unlock, cash package, staff grant) is not a legacy purchase: the entitlement decides, so
+    # its reason code is reported and its revocation or expiry is honoured.
+    from_entitlements = ContentEntitlement.objects.filter(
+        user=user, scope=SCOPE_COURSE, target_id=course_id
+    ).values("id")
+    qs = (
+        Enrollment.objects.filter(
+            user=user,
+            course_id=course_id,
+            org__isnull=True,
+            status__in=(Enrollment.Status.ACTIVE, Enrollment.Status.COMPLETED),
+        )
+        .filter(Q(access_expires_at__isnull=True) | Q(access_expires_at__gt=now))
+        .exclude(source_ref__in=from_entitlements)
+    )
     return qs.exists()
 
 

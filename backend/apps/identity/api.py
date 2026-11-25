@@ -48,6 +48,7 @@ def _me(user) -> dict:
         "instructor_status": _instructor_status(user),
         "memberships": [
             {"org_id": m.org_id, "name": m.org.name, "slug": m.org.slug, "role": m.role,
+             "onboarding_state": m.org.onboarding_state,
              "logo_url": branding[m.org_id].logo_url if m.org_id in branding else "",
              "primary_color": branding[m.org_id].primary_color if m.org_id in branding else ""}
             for m in members

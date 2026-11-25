@@ -1,6 +1,6 @@
 """Pydantic In/Out schemas for the catalog API."""
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from ninja import Schema
@@ -44,6 +44,7 @@ class CourseCard(Schema):
     total_duration_sec: int
     instructors: list[str]
     price: PriceOut | None  # None: not sold individually (e.g. company course)
+    price_from: bool = False  # programs (M21): the lowest of several offers ("from £X")
 
 
 class CoursePage(Schema):
@@ -70,6 +71,45 @@ class SectionOut(Schema):
     id: UUID
     title: str
     lectures: list[LectureOut]
+    module_id: UUID | None = None  # programs: the week's module
+
+
+class CourseModuleOut(Schema):
+    id: UUID
+    module_key: UUID  # offers and purchases point at this (stable across versions)
+    title: str
+    description: str
+
+
+class ProgramOfferOut(Schema):
+    """One way to buy a program or one of its modules (M21)."""
+
+    id: UUID
+    module_key: UUID | None  # None = the whole program
+    mode: str  # live | recorded
+    price: PriceOut | None  # None: tokens only
+    token_price: int | None
+    instalments_max: int
+
+
+class ProgramIntakeOut(Schema):
+    id: UUID
+    name: str
+    start_date: date
+    end_date: date | None
+    places_left: int | None  # None = no limit
+
+
+class ProgramAccessOut(Schema):
+    """What the signed-in learner already has in this program."""
+
+    enrollment_id: UUID
+    scope: str  # program | modules
+    module_keys: list[UUID]  # the modules bought (scope "modules")
+    live: bool  # placed in a group
+    cohort_id: UUID | None
+    paused: bool = False  # a monthly payment failed and the grace period is over
+    paying_monthly: bool = False  # a monthly plan is still running (nothing else is sold meanwhile)
 
 
 class ViewerOut(Schema):
@@ -96,6 +136,12 @@ class CourseDetail(CourseCard):
     full_course_token_price: int | None = None
     token_pricing_mode: str | None = None
     in_subscription: bool = True
+    kind: str = "short"  # "program": sections are weeks grouped by `modules`
+    modules: list[CourseModuleOut] = []
+    # programs (M21): how to buy, the intakes for a live place, and what the viewer has
+    offers: list[ProgramOfferOut] = []
+    intakes: list[ProgramIntakeOut] = []
+    program_access: ProgramAccessOut | None = None
 
 
 class PlaybackOut(Schema):

@@ -15,6 +15,7 @@ from apps.catalog.models import Lecture, LectureResource, MediaAsset, VideoLibra
 from apps.commerce import pricing_service as ps
 from apps.commerce.models import (
     BonusCampaign,
+    CoursePrice,
     PriceTier,
     TokenRate,
     TopUpPolicy,
@@ -52,6 +53,7 @@ class _Base(SchemaTransactionTestCase):
             lectures = [
                 cat.add_lecture(section=sec, kind="article", title=f"L{i}", body="body") for i in range(4)
             ]
+            CoursePrice.objects.create(course=course, is_free=True, tier=None)  # the checklist needs a price
             cat.submit(version=v, by=self.staff)
             course.refresh_from_db()
         return course, lectures
@@ -155,8 +157,8 @@ class DistributionTests(_Base):
                 actor=self.staff,
                 reason="x",
             )
-        # Must list the missing types in the error
-        self.assertIn("article", str(cm.exception))
+        # types left out of the map are excluded; here that leaves nothing to price
+        self.assertIn("at least one component type", str(cm.exception))
 
     def test_sum_equals_total_and_deterministic(self):
         course, _ = self._course("dist-sum")
@@ -405,7 +407,8 @@ class RepublishTests(_Base):
             # Create a new draft version — studio clones lectures by lecture_key.
             new_version = cat.create_draft(course=course, by=self.staff)
             report = ps.migrate_token_pricing_on_republish(old_version, new_version, actor=None)
-        self.assertGreaterEqual(report["copied"], 1)
+        # the draft clone already carries token_price, so only the preview flag may need copying
+        self.assertEqual(report["skipped"], [])
         # The new lecture with the same lecture_key as lectures[0] must carry the price.
         new_lec = Lecture.objects.get(version=new_version, lecture_key=lectures[0].lecture_key)
         self.assertEqual(new_lec.token_price, 42)

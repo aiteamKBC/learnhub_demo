@@ -1,6 +1,6 @@
-import { CalendarClock, Check, Crown, Infinity as InfinityIcon, Info, Settings2 } from 'lucide-react'
-import { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { CalendarClock, Check, Crown, Infinity as InfinityIcon, Info, RefreshCw, Settings2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -9,10 +9,12 @@ import { Card, CardBody } from '@/components/ui/card'
 import { EmptyState, ErrorState, PageHeader } from '@/components/ui/misc'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useBillingPortal } from '@/features/commerce/api'
-import { useMySubscription, useSubscriptionPlans } from '@/features/b2c/api'
+import { useMoney, useMySubscription, useSubscriptionPlans } from '@/features/b2c/api'
 import type { ReviewItem } from '@/pages/b2c/CheckoutReviewPage'
-import { money, shortDate } from '@/lib/format'
-import { Link } from '@/lib/router'
+import { shortDate } from '@/lib/format'
+import { Link, useNavigate } from '@/lib/router'
+
+const STATUS_LABEL: Record<string, string> = { active: 'Active', trialing: 'Free trial', past_due: 'Payment due' }
 
 const SUCCESS = '/subscription?checkout=1'
 const CANCEL = '/subscription'
@@ -40,7 +42,7 @@ export function SubscriptionPage() {
         ) : active ? (
           <ActiveCard sub={sub.data!} justCheckedOut={justCheckedOut} />
         ) : (
-          <Plans justCheckedOut={justCheckedOut} />
+          <Plans justCheckedOut={justCheckedOut} recheck={() => void sub.refetch()} checking={sub.isFetching} />
         )}
       </div>
     </div>
@@ -62,11 +64,9 @@ function ActiveCard({ sub, justCheckedOut }: { sub: NonNullable<ReturnType<typeo
         </span>
         <div className="flex-1">
           <p className="text-lg font-bold">{sub.plan_name}</p>
-          <p className="text-sm text-muted capitalize">{sub.interval} plan</p>
+          <p className="text-sm text-muted">{sub.interval === 'year' ? 'Yearly' : 'Monthly'} plan</p>
         </div>
-        <Badge tone={statusTone} className="capitalize">
-          {sub.status === 'past_due' ? 'Payment due' : sub.status}
-        </Badge>
+        <Badge tone={statusTone}>{STATUS_LABEL[sub.status] ?? 'Active'}</Badge>
       </div>
       <CardBody className="space-y-4">
         {sub.status === 'past_due' ? (
@@ -99,16 +99,37 @@ function ActiveCard({ sub, justCheckedOut }: { sub: NonNullable<ReturnType<typeo
   )
 }
 
-function Plans({ justCheckedOut }: { justCheckedOut: boolean }) {
+function Plans({ justCheckedOut, recheck, checking }: { justCheckedOut: boolean; recheck: () => void; checking: boolean }) {
   const plans = useSubscriptionPlans()
   const navigate = useNavigate()
+  const fmt = useMoney()
+  // useMySubscription polls for about a minute (40 × 1.5 s); after that the page stops
+  // updating itself, so say so and let the person check again
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    if (!justCheckedOut) return
+    const t = setTimeout(() => setSlow(true), 60_000)
+    return () => clearTimeout(t)
+  }, [justCheckedOut])
 
   // Returned from Stripe but the subscription isn't active yet: the webhook is still in flight.
   if (justCheckedOut) {
     return (
       <Card className="animate-reveal p-8 text-center" role="status">
-        <p className="text-lg font-semibold">Starting your subscription&hellip;</p>
-        <p className="mt-1 text-sm text-muted">This can take a few seconds after payment. This page updates itself &mdash; no need to pay again.</p>
+        {slow ? (
+          <>
+            <p className="text-lg font-semibold">This is taking longer than usual</p>
+            <p className="mt-1 text-sm text-muted">This page has stopped checking. If Stripe took your payment, your plan starts shortly and you won&apos;t be charged twice.</p>
+            <Button className="mt-5" loading={checking} onClick={recheck}>
+              <RefreshCw /> Check again
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="text-lg font-semibold">Starting your subscription&hellip;</p>
+            <p className="mt-1 text-sm text-muted">This can take a few seconds after payment. This page updates itself, so there&apos;s no need to pay again.</p>
+          </>
+        )}
       </Card>
     )
   }
@@ -156,7 +177,7 @@ function Plans({ justCheckedOut }: { justCheckedOut: boolean }) {
           </div>
           <p className="mt-2 text-xl font-bold">{p.name}</p>
           <p className="mt-1 text-3xl font-bold tracking-tight">
-            {money(p.amount_minor, p.currency)}
+            {fmt(p.amount_minor, p.currency)}
             <span className="text-sm font-normal text-muted"> / {p.interval === 'year' ? 'year' : 'month'}</span>
           </p>
           {p.description ? <p className="mt-3 text-sm text-muted">{p.description}</p> : null}

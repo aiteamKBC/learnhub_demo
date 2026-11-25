@@ -1,7 +1,7 @@
 """Pydantic In/Out schemas for the learning API (my learning, player, quizzes,
 assignments, notes, certificates)."""
 
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Any
 from uuid import UUID
 
@@ -9,6 +9,13 @@ from ninja import Field, Schema
 
 from apps.catalog.schemas import PlaybackOut, VideoMomentOut, VideoPartOut
 from apps.identity.schemas import OkOut  # noqa: F401 - shared response shape
+
+
+class MyCourseWeek(Schema):
+    number: int
+    title: str
+    starts_on: date
+    ends_on: date
 
 
 class MyCourse(Schema):
@@ -28,6 +35,10 @@ class MyCourse(Schema):
     last_lecture_key: UUID | None
     access_expires_at: datetime | None
     certificate_id: UUID | None
+    # programs (M18), for a learner placed in a group
+    group_name: str | None = None
+    cohort_name: str | None = None
+    next_week: MyCourseWeek | None = None
 
 
 class MyCoursePage(Schema):
@@ -45,12 +56,42 @@ class PlayerLecture(Schema):
     locked: bool = False  # the prerequisite lesson isn't finished yet
     prerequisite_key: UUID | None = None
     prerequisite_title: str | None = None
+    module_locked: bool = False  # programs (M21): in a module the learner hasn't bought
+
+
+class PlayerDayOff(Schema):
+    date: date
+    title: str
 
 
 class PlayerSection(Schema):
     id: UUID
     title: str
     lectures: list[PlayerLecture]
+    # programs only (M18): the week's module and, when the learner is in a group, its dates
+    module_id: UUID | None = None
+    week_number: int | None = None
+    starts_on: date | None = None
+    ends_on: date | None = None
+    days_off: list[PlayerDayOff] = []
+
+
+class PlayerModule(Schema):
+    id: UUID
+    title: str
+    description: str
+    starts_on: date | None = None
+    ends_on: date | None = None
+    owned: bool = True  # M21: False when the learner bought other modules only
+
+
+class PlayerGroup(Schema):
+    name: str
+    cohort_name: str
+    weekday: int | None = None  # 0 = Monday
+    starts_at: time | None = None
+    ends_at: time | None = None
+    tutor_name: str | None = None
 
 
 class PlayerOut(Schema):
@@ -63,13 +104,19 @@ class PlayerOut(Schema):
     last_lecture_key: UUID | None
     certificate_id: UUID | None
     sections: list[PlayerSection]
+    kind: str = "short"  # "program": sections are weeks grouped by `modules`
+    modules: list[PlayerModule] = []
+    group: PlayerGroup | None = None
+    current_section_id: UUID | None = None  # the week running today (placed program learners)
 
 
 class LiveOut(Schema):
     starts_at: datetime | None
     duration_min: int | None
-    join_url: str | None  # appears 15 minutes before the start
+    join_url: str | None  # appears shortly before the start (programs: setting learning.live_join_early_min)
     provider: str = "manual"
+    status: str = "scheduled"  # programs: a cancelled group session says so
+    join_early_min: int = 15
 
 
 class ResourceOut(Schema):
@@ -297,3 +344,125 @@ class VerifyOut(Schema):
     is_revoked: bool
     expires_at: datetime | None = None
     is_expired: bool = False
+
+
+# ---------------------------------------------------------------- program record (M19)
+class LearnerOtjSummaryOut(Schema):
+    counted_min: int
+    pending_min: int
+    expected_min: int | None
+    target_min: int | None
+    target_mode: str
+    rag: str | None  # on_track | behind | at_risk | None (no target)
+    daily_cap_min: int
+
+
+class LearnerKsbOut(Schema):
+    id: UUID
+    code: str
+    kind: str
+    text: str
+    status: str  # met | in_progress | not_started | not_mapped
+    done: int
+    total: int
+
+
+class LearnerCpdModuleOut(Schema):
+    module_key: UUID
+    title: str
+    earned_min: int
+    available_min: int
+
+
+class LearnerCpdOut(Schema):
+    workshops_min: int = 0  # CPD from attended workshops (M20), included in earned_min
+    earned_min: int
+    available_min: int
+    modules: list[LearnerCpdModuleOut]
+
+
+class LearnerModuleCertificateOut(Schema):
+    module_key: UUID
+    module_title: str
+    cpd_min: int
+    verification_code: str
+    issued_at: datetime
+
+
+class LearnerRecordOut(Schema):
+    enrollment_id: UUID
+    program_title: str
+    slug: str
+    otj: LearnerOtjSummaryOut
+    ksbs: list[LearnerKsbOut]
+    cpd: LearnerCpdOut
+    certificates: list[LearnerModuleCertificateOut]
+
+
+class LearnerOtjEntryOut(Schema):
+    id: UUID
+    source: str
+    minutes: int
+    occurred_on: date
+    status: str
+    note: str
+    decision_note: str
+
+
+class LearnerOtjPageOut(Schema):
+    items: list[LearnerOtjEntryOut]
+    next_cursor: str | None
+
+
+class LearnerOtjLogIn(Schema):
+    occurred_on: date
+    minutes: int = Field(..., ge=1, le=1440)
+    note: str = Field(..., min_length=3, max_length=1000)
+
+
+class LearnerIdOut(Schema):
+    id: UUID
+
+
+# ---------------------------------------------------------------- live sessions and workshops (M20)
+class LearnerSessionOut(Schema):
+    id: UUID
+    lecture_key: UUID
+    title: str
+    starts_at: datetime
+    ends_at: datetime
+    status: str
+    provider: str
+    join_url: str | None  # only while the join window is open
+    has_link: bool
+    recording: PlaybackOut | None
+    attended_min: int | None
+
+
+class LearnerSessionsOut(Schema):
+    items: list[LearnerSessionOut]
+    group_name: str | None
+    join_early_min: int
+    present_min: int  # minutes that count as attended
+
+
+class LearnerWorkshopOut(Schema):
+    id: UUID
+    title: str
+    description: str
+    starts_at: datetime
+    ends_at: datetime
+    status: str
+    capacity: int | None
+    spaces_left: int | None
+    booked: bool
+    join_url: str | None
+    recording: PlaybackOut | None
+    attended_min: int | None
+    expected_otj_min: int
+    cpd_min: int
+
+
+class LearnerWorkshopsOut(Schema):
+    items: list[LearnerWorkshopOut]
+    present_min: int

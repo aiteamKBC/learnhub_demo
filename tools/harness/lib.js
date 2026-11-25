@@ -26,7 +26,7 @@ function e2eEnv() {
 function py(script, ...args) {
   return execFileSync(PY, [path.join(__dirname, script), ...args], {
     cwd: BACKEND,
-    env: { ...process.env, ...e2eEnv(), PYTHONPATH: BACKEND },
+    env: { ...process.env, ...e2eEnv(), PYTHONPATH: BACKEND, MAIL_MODE: 'console' }, // never real email
   }).toString().trim()
 }
 const lastLine = (s) => s.split(/\r?\n/).pop().trim()
@@ -43,5 +43,14 @@ module.exports = {
   NEW_USER_PASSWORD: 'e2e-pass-1234',
   // a seeded company admin, for checks that need existing data (password from the user)
   DEMO_EMAIL: process.env.E2E_DEMO_EMAIL || 'hana.cole@brightwater.example.com',
-  DEMO_PASSWORD: process.env.E2E_DEMO_PASSWORD,
+  // from the environment, else from backend/.env.e2e (loaded here, never printed)
+  DEMO_PASSWORD: process.env.E2E_DEMO_PASSWORD || demoPasswordFromFile(),
+}
+
+function demoPasswordFromFile() {
+  try {
+    return e2eEnv().E2E_DEMO_PASSWORD || undefined
+  } catch {
+    return undefined
+  }
 }

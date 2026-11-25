@@ -18,6 +18,7 @@ from apps.org.models import OrgMember
 from core.errors import ServiceError
 from core.tenancy import tenant_context
 from core.tests.base import SchemaTransactionTestCase
+from core.tests.factories import priced_for_publish
 
 
 class LearningBase(SchemaTransactionTestCase):
@@ -106,6 +107,8 @@ class LearningBase(SchemaTransactionTestCase):
         cat.update_assignment(
             assignment=a, instructions="Draw the route", max_score=100, pass_score=60, max_resubmissions=1
         )
+        if org is None:
+            priced_for_publish(course)
         cat.submit(version=v, by=user)
         if ownership == "instructor":
             with tenant_context(user_id=self.staff.id, staff=True):

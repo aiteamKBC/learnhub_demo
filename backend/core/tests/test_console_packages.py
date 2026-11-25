@@ -73,7 +73,7 @@ class ConsolePackagesTest(CommerceBase):
             content_type="application/json",
         )
         self.assertEqual(r.status_code, 400)
-        self.assertEqual(r.json()["code"], "price_too_high")
+        self.assertEqual(r.json()["error"]["code"], "price_too_high")
 
     def test_unpublished_course_is_rejected(self):
         self.client.force_login(self.staff)

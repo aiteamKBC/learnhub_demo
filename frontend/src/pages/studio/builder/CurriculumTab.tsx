@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/misc'
 import type { StudioCourse } from '@/features/studio/api'
 import { cn } from '@/lib/cn'
+import { reducedMotion } from '@/lib/motion'
 import { Link } from '@/lib/router'
 
 import { AddLessonDialog, type Adding } from './curriculum/AddLesson'
@@ -64,7 +65,7 @@ export function CurriculumTab({ course }: { course: StudioCourse }) {
     setParams(next, { replace: true })
     if (!target) return
     setHighlight(target.id)
-    const scroll = window.setTimeout(() => document.getElementById(`lecture-${target.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+    const scroll = window.setTimeout(() => document.getElementById(`lecture-${target.id}`)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' }), 80)
     const clear = window.setTimeout(() => setHighlight(null), 2400)
     return () => (window.clearTimeout(scroll), window.clearTimeout(clear))
   }, [focus, server, params, setParams])
