@@ -21,11 +21,24 @@ class HrConnectionOut(Schema):
     last_error: str
 
 
+class HrRunCountsOut(Schema):
+    """What one sync read and changed (all zero until a run completes)."""
+
+    people: int = 0
+    new_people: int = 0
+    leavers: int = 0
+    departments: int = 0
+    training: int = 0
+    applied: int = 0
+    leave: int = 0
+    to_review: int = 0
+
+
 class HrRunOut(Schema):
     id: UUID
     status: str
     trigger: str
-    counts: dict
+    counts: HrRunCountsOut
     error_message: str
     triggered_by: str | None
     created_at: datetime

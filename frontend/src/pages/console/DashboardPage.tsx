@@ -76,8 +76,8 @@ function PendingApprovals({ d }: { d: ConsoleOverview }) {
       <CardBody className="flex flex-1 flex-col gap-4">
         <ul className="stagger divide-y divide-border">
           <CountRow to="/console/approvals?tab=new" icon={<BookOpen />} label="New courses" n={a.new_courses} />
-          <CountRow to="/console/approvals?tab=certificates" icon={<Award />} label="Certificate templates" n={a.certificate_templates} />
-          <CountRow to="/console/approvals?tab=major" icon={<PenLine />} label="Course changes (major)" n={a.major_changes} />
+          <CountRow to="/console/approvals?tab=templates" icon={<Award />} label="Certificate templates" n={a.certificate_templates} />
+          <CountRow to="/console/approvals?tab=changes" icon={<PenLine />} label="Course changes (major)" n={a.major_changes} />
           {a.other_changes ? <CountRow to="/console/approvals?tab=all" icon={<Layers />} label="Other course changes" n={a.other_changes} /> : null}
         </ul>
         <Button variant="secondary" className="mt-auto w-full" asChild>

@@ -163,7 +163,7 @@ export function useSetPrice(courseId: string) {
   return useMutation({
     mutationFn: (body: { free: boolean; tier_id?: string | null }) =>
       unwrap(api.PUT('/api/v1/studio/courses/{course_id}/price', { params: { path: { course_id: courseId } }, body })),
-    onSuccess: () => courseChanged(qc, courseId),
+    onSuccess: () => Promise.all([courseChanged(qc, courseId), qc.invalidateQueries({ queryKey: ['studio', 'courses'] })]),
   })
 }
 

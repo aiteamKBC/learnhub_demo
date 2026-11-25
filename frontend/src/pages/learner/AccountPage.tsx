@@ -16,6 +16,7 @@ import { usePreferences, useSetPreference } from '@/features/engagement/api'
 import { AuthError, useChangePassword, useHasPassword, useMe, useUpdateMe } from '@/features/identity/auth'
 import { usePublicSettings } from '@/features/platform/api'
 import { useCurrency } from '@/lib/currency'
+import { reducedMotion } from '@/lib/motion'
 import { Link } from '@/lib/router'
 
 import { TwoStepCard } from './TwoStepCard'
@@ -232,7 +233,7 @@ export function AccountPage() {
   useEffect(() => {
     // arriving from "Settings" on the notifications page: go to that section
     const id = location.hash.slice(1)
-    if (id) window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
+    if (id) window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }), 120)
   }, [])
   return (
     <>

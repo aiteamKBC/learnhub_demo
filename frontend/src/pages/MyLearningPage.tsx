@@ -147,8 +147,8 @@ function Stats({ enrolled, completed, more }: { enrolled: number; completed: num
 
 export function MyLearningPage() {
   const { data: me } = useMe()
-  const { data, isLoading, error, refetch } = useMyCourses()
-  const items = data?.items ?? []
+  const { data, isLoading, error, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useMyCourses()
+  const items = data?.pages.flatMap((p) => p.items) ?? []
   const current = items.find((i) => i.progress_pct > 0 && i.progress_pct < 100) ?? items[0]
 
   return (
@@ -235,9 +235,16 @@ export function MyLearningPage() {
               </div>
             ))}
           </div>
+          {hasNextPage ? (
+            <div className="mt-6 flex justify-center">
+              <Button variant="secondary" loading={isFetchingNextPage} onClick={() => void fetchNextPage()}>
+                Show more courses
+              </Button>
+            </div>
+          ) : null}
           </div>
           <aside className="grid content-start gap-4" aria-label="Your progress">
-            <Stats enrolled={items.length} completed={items.filter((i) => i.progress_pct >= 100).length} more={!!data?.next_cursor} />
+            <Stats enrolled={items.length} completed={items.filter((i) => i.progress_pct >= 100).length} more={!!hasNextPage} />
             <UpcomingDeadlines />
             <RecentCertificates />
           </aside>

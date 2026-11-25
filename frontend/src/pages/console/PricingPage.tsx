@@ -50,6 +50,7 @@ import { ConfirmDialog, DetailSheet, ExportButton, gbp, LoadMore, StatusPill, us
 import { useDebounced } from '@/features/org/ui'
 import { cn } from '@/lib/cn'
 import { money } from '@/lib/format'
+import { reducedMotion } from '@/lib/motion'
 import { Link } from '@/lib/router'
 
 const TABS = ['courses', 'subscriptions', 'currencies', 'regional', 'settings'] as const
@@ -216,7 +217,7 @@ function CoursesCard({ filters, setFilters }: { filters: GridFilters; setFilters
             onSave={(t) =>
               bulkPrice.mutate(
                 { course_ids: selected, tier_id: t === 'free' ? null : t, is_free: t === 'free' },
-                { onSuccess: (r) => (toast.success(`${(r as { updated: number }).updated} prices updated.`), setBulk(false), setSelected([])), onError: fail },
+                { onSuccess: (r) => (toast.success(`${r.updated} prices updated.`), setBulk(false), setSelected([])), onError: fail },
               )
             }
           />
@@ -244,7 +245,7 @@ function RuleForm({ onDone }: { onDone: (id: string) => void }) {
         percent: v.action === 'percent' ? Number(v.percent) : null,
         rounding: v.rounding,
       },
-      { onSuccess: (r) => onDone((r as { id: string }).id), onError: fail },
+      { onSuccess: (r) => onDone(r.id), onError: fail },
     )
   }
   const ok = v.name.trim() && (v.scope === 'all' || v.target_id) && (v.action === 'percent' ? Number(v.percent) !== 0 && v.percent.trim() !== '' : v.tier)
@@ -478,7 +479,7 @@ function CurrenciesCard() {
         title="Currencies and exchange rates"
         description="Prices in other currencies come from the pound price and these rates."
         action={
-          <Button size="sm" variant="secondary" loading={refresh.isPending} onClick={() => refresh.mutate(undefined, { onSuccess: (r) => toast.success(`${(r as { rates: number }).rates} rates updated.`), onError: fail })}>
+          <Button size="sm" variant="secondary" loading={refresh.isPending} onClick={() => refresh.mutate(undefined, { onSuccess: (r) => toast.success(`${r.rates} rates updated.`), onError: fail })}>
             <RefreshCw /> Refresh rates
           </Button>
         }
@@ -804,7 +805,7 @@ export function ConsolePricingPage() {
                 <CoursesCard filters={filters} setFilters={setFilters} />
                 <RulesCard open={openRule} setOpen={setOpenRule} />
               </div>
-              <Tools go={setTab} onRule={() => document.getElementById('price-rules')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+              <Tools go={setTab} onRule={() => document.getElementById('price-rules')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })} />
             </div>
           </TabsContent>
           <TabsContent value="subscriptions" className="mt-0"><SubscriptionPricing /></TabsContent>

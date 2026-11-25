@@ -26,7 +26,7 @@ import {
   useSalesFacets,
   useSalesOverview,
 } from '@/features/console/sales'
-import { ConfirmDialog, DateRangeSelect, DetailSheet, ExportButton, gbp, gbpShort, InfoRow, KpiCard, LoadMore, StatusPill, useParam, useRangeParam, useTabParam } from '@/features/console/ui'
+import { ConfirmDialog, DateRangeSelect, DetailSheet, ExportButton, gbp, gbpShort, InfoRow, KpiCard, LoadMore, StatusPill, useParam, usePatchParams, useRangeParam, useTabParam } from '@/features/console/ui'
 import { useDebounced } from '@/features/org/ui'
 import { cn } from '@/lib/cn'
 import { money } from '@/lib/format'
@@ -91,10 +91,11 @@ function Overview() {
 function OrdersCard({ compact }: { compact?: boolean }) {
   const [, setOrder] = useParam('order')
   const [user, setUser] = useParam('user')
+  const [status, setStatus] = useParam('status') // the dashboard links to ?tab=orders&status=failed
   const [text, setText] = useState('')
   const [f, setF] = useState<OrderFilters>({})
   const q = useDebounced(text, 300)
-  const filters: OrderFilters = { ...f, q: q.trim() || undefined, user: user || undefined }
+  const filters: OrderFilters = { ...f, status: status || undefined, q: q.trim() || undefined, user: user || undefined }
   const list = useConsoleOrders(filters)
   const facets = useSalesFacets()
   const rows = list.data?.pages.flatMap((p) => p.items) ?? []
@@ -110,7 +111,7 @@ function OrdersCard({ compact }: { compact?: boolean }) {
       />
       <Toolbar>
         <SearchBox value={text} onChange={setText} label="Search orders" placeholder="Order number, customer or email" className="sm:max-w-xs" />
-        <NativeSelect aria-label="Status" value={f.status ?? ''} onChange={set('status')} className="w-full sm:w-44">
+        <NativeSelect aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-44">
           <option value="">All statuses</option>
           {Object.entries(ORDER_STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </NativeSelect>
@@ -194,9 +195,7 @@ function OrderSheet() {
 
 function OrderDetail({ d }: { d: ConsoleOrderDetail }) {
   const o = d.order
-  const [, setUser] = useParam('user')
-  const [, setTab] = useTabParam(TABS, 'overview')
-  const [, setOrder] = useParam('order')
+  const patchParams = usePatchParams()
   const [refundItem, setRefundItem] = useState<ConsoleOrderDetail['items'][number] | null>(null)
   const refund = useConsoleRefund(o.id)
   const m = (v: number) => money(v, o.currency, o.exponent)
@@ -214,7 +213,7 @@ function OrderDetail({ d }: { d: ConsoleOrderDetail }) {
             <p className="truncate font-medium">{o.name || '—'}</p>
             <p className="truncate text-sm text-muted">{o.email}</p>
           </div>
-          <Button size="sm" variant="secondary" onClick={() => (setOrder(''), setTab('orders'), setUser(o.user_id))}>
+          <Button size="sm" variant="secondary" onClick={() => patchParams({ order: '', tab: 'orders', user: o.user_id })}>
             View customer orders ({d.customer_orders})
           </Button>
         </div>

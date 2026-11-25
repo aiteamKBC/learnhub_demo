@@ -33,12 +33,13 @@
  *   folio          privacy and terms: a numbered policy document under a padlock seal
  *   handover       HR system: two stacks of people records passing cards along dashed arrows
  *   curriculum     programs and cohorts: module bands split into weeks, the current week lit
+ *   spectrum       inclusion test: six overlapping rings (one per section) beside rows of answer scales
  */
 import { memo, useId, type ReactNode } from 'react'
 
 import { cn } from '@/lib/cn'
 
-export type BackdropVariant = 'constellation' | 'mosaic' | 'waves' | 'path' | 'contours' | 'blueprint' | 'circuit' | 'aurora' | 'orbit' | 'ribbons' | 'confetti' | 'notebook' | 'guilloche' | 'honeycomb' | 'checklist' | 'signal' | 'dials' | 'bubbles' | 'chartgrid' | 'orgchart' | 'floorplan' | 'storyboard' | 'coins' | 'stamp' | 'seats' | 'timetable' | 'folio' | 'handover' | 'curriculum'
+export type BackdropVariant = 'constellation' | 'mosaic' | 'waves' | 'path' | 'contours' | 'blueprint' | 'circuit' | 'aurora' | 'orbit' | 'ribbons' | 'confetti' | 'notebook' | 'guilloche' | 'honeycomb' | 'checklist' | 'signal' | 'dials' | 'bubbles' | 'chartgrid' | 'orgchart' | 'floorplan' | 'storyboard' | 'coins' | 'stamp' | 'seats' | 'timetable' | 'folio' | 'handover' | 'curriculum' | 'spectrum'
 
 // small seeded PRNG (mulberry32): same seed, same art
 function rng(seed: number) {
@@ -1108,6 +1109,44 @@ const Curriculum = memo(function Curriculum() {
   )
 })
 
+/** spectrum (inclusion test): six soft rings overlapping around one centre, one per kind of
+ * need, with rows of four-step answer scales drifting beside them. Kept on the right. */
+const Spectrum = memo(function Spectrum() {
+  const id = useId()
+  const r = rng(113)
+  const cx = 1230
+  const cy = 300
+  const tones = ['var(--primary)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-5)', 'var(--primary)', 'var(--chart-2)']
+  const rings = tones.map((tone, i) => {
+    const a = (i / tones.length) * Math.PI * 2 - Math.PI / 2
+    return { x: cx + Math.cos(a) * 92, y: cy + Math.sin(a) * 92, tone }
+  })
+  const scales = Array.from({ length: 5 }, (_, i) => ({ x: 830 + (i % 2) * 46, y: 120 + i * 92, pick: Math.floor(r() * 4) }))
+  return (
+    <Svg>
+      <Glow id={`${id}g`} cx={cx} cy={cy} r={520} color="var(--primary)" opacity={0.14} />
+      <Glow id={`${id}g2`} cx={1500} cy={560} r={320} color="var(--chart-3)" opacity={0.1} />
+      {rings.map((c, i) => (
+        <circle key={i} cx={c.x} cy={c.y} r="132" fill={c.tone} fillOpacity="0.05" stroke={c.tone} strokeOpacity="0.24" strokeWidth="1.5" />
+      ))}
+      <circle cx={cx} cy={cy} r="40" fill="var(--surface)" fillOpacity="0.5" stroke="var(--primary)" strokeOpacity="0.35" />
+      <circle cx={cx} cy={cy} r="9" fill="var(--primary)" fillOpacity="0.55" />
+      {scales.map((sc, i) => (
+        <g key={i}>
+          <line x1={sc.x} x2={sc.x + 150} y1={sc.y} y2={sc.y} stroke="var(--primary)" strokeOpacity="0.14" strokeWidth="2" strokeLinecap="round" />
+          {[0, 1, 2, 3].map((k) => (
+            <circle key={k} cx={sc.x + k * 50} cy={sc.y} r={k === sc.pick ? 8 : 5} fill={k === sc.pick ? tones[i]! : 'var(--surface)'} fillOpacity={k === sc.pick ? 0.55 : 0.9} stroke={tones[i]!} strokeOpacity="0.4" />
+          ))}
+        </g>
+      ))}
+      <g fill="none" stroke="var(--chart-3)" strokeOpacity="0.45" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="1486" cy="578" r="26" />
+        <path d="M1474 578 l9 9 l16 -18" />
+      </g>
+    </Svg>
+  )
+})
+
 /**
  * The artwork for one page, placed behind its top area and faded into the page
  * background so content always reads clearly. Purely decorative (aria-hidden).
@@ -1143,6 +1182,7 @@ export function Backdrop({ variant, height = 560, className, from, to, fade = tr
     folio: <Folio />,
     handover: <Handover />,
     curriculum: <Curriculum />,
+    spectrum: <Spectrum />,
   }[variant]
   return (
     <div

@@ -228,10 +228,13 @@ function Companies({ c }: { c: CnCohort }) {
   )
 }
 
+const SESSION_STATUS: Record<string, string> = { scheduled: 'Scheduled', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled', rescheduled: 'Rescheduled' }
+
 function Sessions({ c }: { c: CnCohort }) {
   const q = useCnSessions(c.id)
   const add = useCnAddSession(c.id)
   const cancel = useCnCancelSession()
+  const [cancelling, setCancelling] = useState<{ id: string; name: string } | null>(null)
   const [when, setWhen] = useState('')
   const [mins, setMins] = useState(90)
   const [title, setTitle] = useState('')
@@ -264,9 +267,9 @@ function Sessions({ c }: { c: CnCohort }) {
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
-                  <Badge tone={s.status === 'cancelled' ? 'neutral' : s.status === 'completed' ? 'success' : 'info'}>{s.status}</Badge>
+                  <Badge tone={s.status === 'cancelled' ? 'neutral' : s.status === 'completed' ? 'success' : 'info'}>{SESSION_STATUS[s.status] ?? s.status}</Badge>
                   {s.status === 'scheduled' ? (
-                    <Button variant="ghost" size="sm" loading={cancel.isPending && cancel.variables === s.id} onClick={() => cancel.mutate(s.id, { onSuccess: () => toast.success('Session cancelled'), onError: err })}>
+                    <Button variant="ghost" size="sm" loading={cancel.isPending && cancel.variables === s.id} onClick={() => setCancelling({ id: s.id, name: s.title || `Session ${s.sequence}` })}>
                       Cancel
                     </Button>
                   ) : null}
@@ -287,6 +290,15 @@ function Sessions({ c }: { c: CnCohort }) {
           </Button>
         </form>
       ) : null}
+      <ConfirmDialog
+        open={!!cancelling}
+        onOpenChange={(o) => !o && setCancelling(null)}
+        title={`Cancel ${cancelling?.name ?? 'this session'}?`}
+        body="The session is marked as cancelled. This cannot be undone: add a new session if it should happen later."
+        confirmLabel="Cancel session"
+        loading={cancel.isPending}
+        onConfirm={() => cancelling && cancel.mutate(cancelling.id, { onSuccess: () => (toast.success('Session cancelled'), setCancelling(null)), onError: err })}
+      />
     </section>
   )
 }
@@ -585,6 +597,7 @@ function Tutors() {
   const q = useCnTutors()
   const act = useCnTutorAction()
   const [creating, setCreating] = useState(false)
+  const [suspending, setSuspending] = useState<{ id: string; name: string } | null>(null)
   return (
     <Card>
       <CardHeader title="Tutors" description="Only approved tutors can lead a group." action={<Button size="sm" onClick={() => setCreating(true)}><UserPlus /> Add tutor</Button>} />
@@ -619,7 +632,7 @@ function Tutors() {
                           Approve
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost" onClick={() => act.mutate({ id: t.id, action: 'suspend' }, { onSuccess: () => toast.success('Tutor suspended'), onError: err })}>
+                        <Button size="sm" variant="ghost" onClick={() => setSuspending({ id: t.id, name: t.user_name || t.user_email })}>
                           Suspend
                         </Button>
                       )}
@@ -632,6 +645,15 @@ function Tutors() {
         </QueryBlock>
       </div>
       {creating ? <NewTutor onClose={() => setCreating(false)} /> : null}
+      <ConfirmDialog
+        open={!!suspending}
+        onOpenChange={(o) => !o && setSuspending(null)}
+        title={`Suspend ${suspending?.name ?? 'this tutor'}?`}
+        body="They can no longer be given a group until you approve them again."
+        confirmLabel="Suspend tutor"
+        loading={act.isPending}
+        onConfirm={() => suspending && act.mutate({ id: suspending.id, action: 'suspend' }, { onSuccess: () => (toast.success('Tutor suspended'), setSuspending(null)), onError: err })}
+      />
     </Card>
   )
 }
@@ -639,13 +661,13 @@ function Tutors() {
 export function ConsoleCorporateLivePage() {
   const [tab, setTab] = useTabParam(TABS, 'requests')
   useEffect(() => {
-    document.title = 'Live training · Console · LearnHub'
+    document.title = 'Short-course live training · Console · LearnHub'
   }, [])
   return (
     <>
-      <PageHeader title="Live training" description="Company requests, live groups, sessions and tutors." />
+      <PageHeader title="Short-course live training" description="Company requests, live groups, sessions and tutors." />
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList aria-label="Live training sections">
+        <TabsList aria-label="Short-course live training sections">
           <TabsTrigger value="requests">Requests</TabsTrigger>
           <TabsTrigger value="groups">Groups</TabsTrigger>
           <TabsTrigger value="tutors">Tutors</TabsTrigger>

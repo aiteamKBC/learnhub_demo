@@ -20,6 +20,7 @@ DOMAIN_SCHEMAS = [
     "analytics",
     "platform",
     "integrations",
+    "inclusion",
 ]
 
 

@@ -1,4 +1,4 @@
-import { BookOpen, Building2, ClipboardCheck, CreditCard, DollarSign, FileBarChart, GraduationCap, LayoutDashboard, LifeBuoy, MessageSquare, Network, Plug, ShieldCheck, UserPlus, Users, Wallet } from 'lucide-react'
+import { BookOpen, Building2, ClipboardCheck, CreditCard, DollarSign, FileBarChart, GraduationCap, HeartHandshake, LayoutDashboard, LifeBuoy, MessageSquare, Network, Plug, ShieldCheck, UserPlus, Users, Wallet } from 'lucide-react'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, Outlet } from 'react-router-dom'
 
@@ -9,6 +9,7 @@ import { SiteRoot } from '@/components/layout/SiteRoot'
 import { type NavSection, WorkspaceLayout } from '@/components/layout/WorkspaceLayout'
 import { corporateBusinessNav, corporateBusinessRoutes, corporateConsoleRoutes, corporateLearnerRoutes } from '@/features/corporate/routes'
 import { programsConsoleRoutes } from '@/features/programs/routes'
+import { inclusionConsoleRoutes } from '@/features/inclusion/routes'
 import { NotFoundPage } from '@/pages/StatusPages'
 
 import { PageSpinner, RequireAuth, RequireManager, RequireRole } from './guards'
@@ -36,6 +37,8 @@ const ProgramRecordPage = named(() => import('@/pages/learner/ProgramRecordPage'
 const ProgramSessionsPage = named(() => import('@/pages/learner/ProgramSessionsPage'), 'ProgramSessionsPage')
 const CertificatesPage = named(() => import('@/pages/learner/CertificatesPage'), 'CertificatesPage')
 const AchievementsPage = named(() => import('@/pages/learner/AchievementsPage'), 'AchievementsPage')
+const InclusionPage = named(() => import('@/pages/learner/InclusionPage'), 'InclusionPage')
+const CompanyInclusionResultsPage = named(() => import('@/pages/business/InclusionResultsPage'), 'CompanyInclusionResultsPage')
 const RequiredTrainingPage = named(() => import('@/pages/learner/RequiredTrainingPage'), 'RequiredTrainingPage')
 const NotificationsPage = named(() => import('@/pages/learner/NotificationsPage'), 'NotificationsPage')
 const AccountPage = named(() => import('@/pages/learner/AccountPage'), 'AccountPage')
@@ -116,6 +119,7 @@ const businessNav: NavSection[] = [
       { to: '/business/people', label: 'People', Icon: Users },
       { to: '/business/units', label: 'Locations & teams', Icon: Network },
       { to: '/business/invites', label: 'Invitations', Icon: UserPlus },
+      { to: '/business/inclusion', label: 'Inclusion results', Icon: HeartHandshake },
     ],
   },
   {
@@ -171,6 +175,7 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
           { path: '/learn', element: page(<MyLearningPage />), handle: { title: 'My learning' } },
           { path: '/learn/certificates', element: page(<CertificatesPage />), handle: { title: 'My certificates', art: 'guilloche' } },
           { path: '/learn/achievements', element: page(<AchievementsPage />), handle: { title: 'Achievements', art: 'honeycomb' } },
+          { path: '/learn/inclusion', element: page(<InclusionPage />), handle: { title: 'Inclusion test', art: 'spectrum' } },
           { path: '/learn/required', element: page(<RequiredTrainingPage />), handle: { title: 'Required training', art: 'checklist' } },
           { path: '/learn/:slug/record', element: page(<ProgramRecordPage />), handle: { title: 'My record', art: 'curriculum' } },
           { path: '/learn/:slug/sessions', element: page(<ProgramSessionsPage />), handle: { title: 'Live sessions', art: 'timetable' } },
@@ -179,7 +184,7 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
           { path: '/account/orders', element: page(<OrdersPage />), handle: { title: 'Orders', art: 'ribbons' } },
           { path: '/wallet', element: page(<WalletPage />), handle: { title: 'Token wallet', art: 'coins' } },
           { path: '/wallet/buy', element: page(<TokenBuyPage />), handle: { title: 'Buy tokens', art: 'coins' } },
-          { path: '/wallet/result', element: page(<TokenResultPage />), handle: { title: 'Payment received', art: 'coins' } },
+          { path: '/wallet/result', element: page(<TokenResultPage />), handle: { title: 'Confirming payment', art: 'coins' } },
           { path: '/subscription', element: page(<SubscriptionPage />), handle: { title: 'Unlimited plan', art: 'ribbons' } },
           { path: '/packages', element: page(<PackagesPage />), handle: { title: 'Course bundles', art: 'ribbons' } },
           { path: '/checkout/review', element: page(<CheckoutReviewPage />), handle: { title: 'Review your order', art: 'ribbons' } },
@@ -218,6 +223,7 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
       { path: 'requirements', element: page(<RequirementsPage />), handle: { title: 'Requirements', art: 'checklist' } },
       { path: 'reports', element: page(<ReportsPage />), handle: { title: 'Reports', art: 'chartgrid' } },
       { path: 'people', element: page(<PeoplePage />), handle: { title: 'People', art: 'orgchart' } },
+      { path: 'inclusion', element: page(<CompanyInclusionResultsPage />), handle: { title: 'Inclusion results', art: 'spectrum' } },
       { path: 'people/:memberId', element: page(<PersonPage />), handle: { title: 'Person', art: 'orgchart' } },
       { path: 'units', element: page(<UnitsPage />), handle: { title: 'Locations and teams', art: 'floorplan' } },
       { path: 'hr-system', element: page(<HrSystemPage />), handle: { title: 'HR system', art: 'handover' } },
@@ -282,6 +288,7 @@ export const router = createBrowserRouter([{ element: <SiteRoot />, children: [
       { path: 'audit', element: page(<ConsoleAuditPage />), handle: { title: 'Audit log · Console' } },
       ...corporateConsoleRoutes,
       ...programsConsoleRoutes,
+      ...inclusionConsoleRoutes,
       { path: 'token-pricing', element: page(<ConsoleTokenPricingPage />), handle: { title: 'Token pricing · Console', art: 'coins' } },
       { path: 'wallets', element: page(<ConsoleWalletsPage />), handle: { title: 'Token wallets · Console', art: 'coins' } },
       { path: 'packages', element: page(<ConsolePackagesPage />), handle: { title: 'Packages · Console', art: 'ribbons' } },

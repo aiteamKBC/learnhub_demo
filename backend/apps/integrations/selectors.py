@@ -4,6 +4,7 @@ The encrypted API key is never selected for a response."""
 from __future__ import annotations
 
 from django.db.models import Count, Q
+from django.db.models.functions import Lower
 from django.utils import timezone
 
 from apps.org.models import OrgMember
@@ -67,7 +68,7 @@ def people(
 ):
     """Breathe people A-Z, one keyset page. Managers see only people linked to members
     inside their units. Email matches are suggested with ONE extra query."""
-    qs = ExternalPerson.objects.filter(connection=conn).select_related("member__user")
+    qs = ExternalPerson.objects.filter(org_id=scope.org_id, connection=conn).select_related("member__user")
     if not scope.is_admin:
         qs = qs.filter(member__in=scope.members(OrgMember.objects.filter(org_id=scope.org_id)))
     if status == "leaver":
@@ -81,7 +82,7 @@ def people(
         qs = qs.filter(Q(display_name__gt=after[0]) | Q(display_name=after[0], id__gt=after[1]))
     rows = list(qs.order_by("display_name", "id")[: limit + 1])
     page = rows[:limit]
-    emails = {p.email for p in page if p.email and p.member_id is None}
+    emails = {p.email.lower() for p in page if p.email and p.member_id is None}
     suggestions = {}
     if emails and scope.is_admin:
         linked = set(
@@ -89,9 +90,11 @@ def people(
                 "member_id", flat=True
             )
         )
-        for m in OrgMember.objects.filter(
-            org_id=scope.org_id, removed_at__isnull=True, user__email__in=emails
-        ).select_related("user"):
+        for m in (
+            OrgMember.objects.annotate(email_key=Lower("user__email"))
+            .filter(org_id=scope.org_id, removed_at__isnull=True, email_key__in=emails)
+            .select_related("user")
+        ):
             if m.id not in linked:
                 suggestions[m.user.email.lower()] = m
     return page, suggestions, keyset.encode(page[-1].display_name, page[-1].id) if len(rows) > limit else None
@@ -127,9 +130,13 @@ def training_titles(conn: HrConnection) -> list[dict]:
         .annotate(records=Count("id"), applied=Count("id", filter=Q(applied_record__isnull=False)))
         .order_by("title_key")
     )
-    titles = dict(
-        ExternalTrainingRecord.objects.filter(connection=conn).order_by().values_list("title_key", "title")
-    )
+    titles: dict[str, str] = {}
+    for key, title in (
+        ExternalTrainingRecord.objects.filter(connection=conn)
+        .order_by("id")
+        .values_list("title_key", "title")
+    ):
+        titles.setdefault(key, title)  # the first spelling Breathe sent, whatever the order of rows
     maps = {
         m.title_key: m for m in HrTrainingMap.objects.filter(connection=conn).select_related("requirement")
     }
@@ -140,12 +147,12 @@ def training_titles(conn: HrConnection) -> list[dict]:
     ]  # fmt: skip
 
 
-def training_records(conn: HrConnection, limit: int = 100) -> list[ExternalTrainingRecord]:
-    return list(
-        ExternalTrainingRecord.objects.filter(connection=conn)
-        .select_related("person", "applied_record")
-        .order_by("-completion_date", "-id")[:limit]
-    )
+def training_records(scope: Scope, conn: HrConnection, limit: int = 100) -> list[ExternalTrainingRecord]:
+    """Newest first. Managers see only records of linked people inside their units."""
+    qs = ExternalTrainingRecord.objects.filter(org_id=scope.org_id, connection=conn)
+    if not scope.is_admin:
+        qs = qs.filter(person__member__in=scope.members(OrgMember.objects.filter(org_id=scope.org_id)))
+    return list(qs.select_related("person", "applied_record").order_by("-completion_date", "-id")[:limit])
 
 
 def leave_for_members(scope: Scope, member_ids: list) -> dict:

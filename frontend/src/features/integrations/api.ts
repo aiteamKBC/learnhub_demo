@@ -1,4 +1,4 @@
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 
 import { api, unwrap } from '@/api/client'
@@ -62,14 +62,20 @@ export function useHrTrainingRecords(enabled = true) {
 }
 
 /** Approved leave for the people on one page: a single call, keyed by member. */
-export function useHrLeave(memberIds: string[]) {
-  const ids = [...memberIds].sort()
-  return useQuery({
-    queryKey: key('leave', ids.join(',')),
-    queryFn: () => unwrap(api.GET('/api/v1/integrations/hr/leave', { params: { query: { member_ids: ids } } })),
-    enabled: ids.length > 0,
-    staleTime: 5 * 60_000,
-    select: (rows) => new Map(rows.map((r) => [r.member_id, r])),
+/** Leave for the people on screen: one cached request per loaded page of people, so
+ *  "Show more" only fetches the new page and no request grows past one page of ids. */
+export function useHrLeave(pages: string[][]) {
+  return useQueries({
+    queries: pages.map((memberIds) => {
+      const ids = [...memberIds].sort()
+      return {
+        queryKey: key('leave', ids.join(',')),
+        queryFn: () => unwrap(api.GET('/api/v1/integrations/hr/leave', { params: { query: { member_ids: ids } } })),
+        enabled: ids.length > 0,
+        staleTime: 5 * 60_000,
+      }
+    }),
+    combine: (results) => new Map(results.flatMap((r) => r.data ?? []).map((r) => [r.member_id, r])),
   })
 }
 

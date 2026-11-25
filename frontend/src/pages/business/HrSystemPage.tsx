@@ -49,20 +49,20 @@ import { ROLE_LABEL, unitLabel, useAssignableRoles, usePeopleSearch, useUnits } 
 import { cn } from '@/lib/cn'
 import { relativeDate, shortDate } from '@/lib/format'
 
-const err = (e: unknown) => (e as Error).message
+const err = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong. Try again.')
 const TABS = ['people', 'departments', 'training', 'history'] as const
 type Tab = (typeof TABS)[number]
 
 /** /business/hr-system (M17): connect Breathe HR and keep people, departments, training
  * records and approved leave in step. Admins change things; managers read. */
 export function HrSystemPage() {
-  const { data, isLoading, error, refetch } = useHrOverview()
+  const { data, isPending, error, refetch } = useHrOverview()
   useSyncFinished(data)
 
   return (
     <div>
       <PageHeader title="HR system" description="Keep your people, departments, training records and leave in step with Breathe HR." />
-      {isLoading ? (
+      {isPending ? (
         <div className="grid gap-4">
           <Skeleton className="h-36 rounded-lg" />
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -774,7 +774,7 @@ function HistoryTab() {
         ) : (
           <ol className="stagger grid gap-2">
             {data.map((r) => {
-              const n = r.counts as Record<string, number>
+              const n = r.counts
               return (
                 <li key={r.id} className="rounded-lg border border-border p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">

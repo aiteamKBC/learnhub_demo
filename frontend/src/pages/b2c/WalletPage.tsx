@@ -8,7 +8,7 @@ import { CountUp } from '@/components/ui/count-up'
 import { EmptyState, ErrorState, PageHeader, StatCard } from '@/components/ui/misc'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useWalletBalance, useWalletGrants, useWalletLedger } from '@/features/b2c/api'
+import { GRANT_SOURCE_LABEL, LEDGER_KIND_LABEL, useWalletBalance, useWalletGrants, useWalletLedger } from '@/features/b2c/api'
 import { count, relativeDate, shortDate } from '@/lib/format'
 import { Link } from '@/lib/router'
 
@@ -100,14 +100,6 @@ export function WalletPage() {
   )
 }
 
-const GRANT_SOURCE_LABEL: Record<string, string> = {
-  purchase: 'Purchased',
-  topup: 'Top-up',
-  bonus: 'Bonus',
-  admin: 'Adjustment',
-  refund: 'Refund',
-}
-
 function GrantsTab() {
   const { data, isLoading, error, refetch } = useWalletGrants()
   if (isLoading) return <Skeleton className="h-48 rounded-lg" />
@@ -139,7 +131,7 @@ function GrantsTab() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
-                  {GRANT_SOURCE_LABEL[g.source] ?? g.source} · {count(g.amount)} tokens
+                  {GRANT_SOURCE_LABEL[g.source] ?? 'Tokens'} · {count(g.amount)} tokens
                 </p>
                 <p className="truncate text-xs text-muted">
                   {g.note || 'Token grant'} · {relativeDate(g.granted_at)}
@@ -164,14 +156,12 @@ function GrantsTab() {
 
 const LEDGER_TONE: Record<string, 'success' | 'danger' | 'neutral' | 'warning'> = {
   grant: 'success',
-  topup: 'success',
-  purchase: 'success',
-  bonus: 'success',
+  refund_reversal: 'success',
   spend: 'danger',
-  unlock: 'danger',
-  expire: 'warning',
-  adjust: 'neutral',
+  expiry: 'warning',
+  admin_clawback: 'neutral',
 }
+const ledgerLabel = (kind: string) => LEDGER_KIND_LABEL[kind] ?? kind.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 
 function LedgerTab() {
   const { data, isLoading, error, refetch } = useWalletLedger()
@@ -185,10 +175,8 @@ function LedgerTab() {
         {data.map((e) => (
           <li key={e.id} className="flex items-center gap-3 p-4">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium capitalize">{e.kind.replace(/_/g, ' ')}</p>
-              <p className="truncate text-xs text-muted">
-                {e.note || '—'} · {relativeDate(e.created_at)}
-              </p>
+              <p className="truncate text-sm font-medium">{e.note || ledgerLabel(e.kind)}</p>
+              <p className="truncate text-xs text-muted">{relativeDate(e.created_at)}</p>
             </div>
             <div className="text-right">
               <p className={`text-sm font-semibold tabular-nums ${e.amount < 0 ? 'text-danger' : 'text-success'}`}>
@@ -197,8 +185,8 @@ function LedgerTab() {
               </p>
               <p className="text-xs text-muted tabular-nums">balance {count(e.balance_after)}</p>
             </div>
-            <Badge tone={LEDGER_TONE[e.kind] ?? 'neutral'} className="hidden sm:inline-flex capitalize">
-              {e.kind.replace(/_/g, ' ')}
+            <Badge tone={LEDGER_TONE[e.kind] ?? 'neutral'} className="hidden sm:inline-flex">
+              {ledgerLabel(e.kind)}
             </Badge>
           </li>
         ))}

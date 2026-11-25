@@ -42,7 +42,8 @@ SPEC = {
     "modules": [
         {"title": "Planning", "weeks": 2},
         {"title": "Control", "weeks": [{"title": "Week 1", "components": [
-            {"kind": "live_session", "title": "Control live", "otj_min": 120, "cpd_min": 120, "ksbs": ["K1", "S1"]},
+            {"kind": "live_session", "title": "Control live", "otj_min": 120, "cpd_min": 120, "ksbs": ["K1", "S1"],
+             "body": "<p>Plan the {module} review.</p>"},
             {"kind": "article", "title": "Control reading", "otj_min": 60, "body": "<p>Read this.</p>"},
         ]}]},
     ],
@@ -96,6 +97,10 @@ class SeedProgramsTest(SchemaTransactionTestCase):
             self.assertEqual(live.lectures.count(), 3 + 3 + 2)  # two standard weeks, one given week
             reflections = Lecture.objects.filter(version=live, kind="assignment").select_related("assignment")
             self.assertTrue(reflections and all(r.assignment.instructions for r in reflections))
+            given_live = Lecture.objects.get(version=live, title="Control live")
+            self.assertEqual(
+                given_live.body, "<p>Plan the Control review.</p>"
+            )  # a live session keeps its purpose
             # standard from the file, the mapped component and the settings
             std = KsbStandard.objects.get(code="ST9999")
             self.assertEqual(std.items.count(), 2)
@@ -149,3 +154,12 @@ class SeedProgramsTest(SchemaTransactionTestCase):
         self.assertEqual({s["key"] for s in specs} >= {"PCP", "MM", "ME"}, True)
         for s in specs:
             self.assertTrue(s["modules"] and all(m["title"] and m["weeks"] for m in s["modules"]), s["key"])
+            for m in s["modules"]:
+                for w in m["weeks"] if isinstance(m["weeks"], list) else []:
+                    self.assertTrue(
+                        w["components"], (s["key"], m["title"], w["title"])
+                    )  # a week can't be empty
+                    for c in w["components"]:  # the seed formats these: stray braces would crash it
+                        for field in ("title", "body", "instructions"):
+                            if c.get(field):
+                                c[field].format(module="M", week=1)

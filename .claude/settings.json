@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\""
           }
         ]
       }
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint_python.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint_python.py\""
           }
         ]
       }
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/goal_gate.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/goal_gate.py\""
           }
         ]
       }
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/context.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/context.py\""
           }
         ]
       }

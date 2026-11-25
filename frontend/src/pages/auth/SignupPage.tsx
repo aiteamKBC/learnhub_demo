@@ -9,13 +9,18 @@ import { AuthError, useSignup } from '@/features/identity/auth'
 import { usePublicSettings } from '@/features/platform/api'
 import { safeNext } from '@/lib/next'
 
+import { AudienceSwitch, orgSignupNext, useAudience } from './AudienceSwitch'
 import { AuthShell } from './AuthShell'
 import { SocialButtons } from './SocialButtons'
 import { Link, useNavigate } from '@/lib/router'
 
 export function SignupPage() {
   const [params] = useSearchParams()
-  const next = safeNext(params.get('next'))
+  const { audience, nextParam } = useAudience()
+  const org = audience === 'org'
+  // an organisation goes on to set up its company; a learner to their learning
+  const next = nextParam ? safeNext(nextParam) : org ? orgSignupNext : safeNext(null)
+  const loginHref = org ? '/login?as=org' : '/login'
   const navigate = useNavigate()
   const signup = useSignup()
   const [email, setEmail] = useState('')
@@ -48,7 +53,7 @@ export function SignupPage() {
         {/* sign-up answers the same way for known emails (no account probing), so say what happens then */}
         <p className="mt-4 text-center text-sm text-muted">
           Already have an account with this email? We've emailed you a reminder instead.{' '}
-          <Link to="/login" className="font-medium text-primary hover:underline">
+          <Link to={loginHref} className="font-medium text-primary hover:underline">
             Log in
           </Link>
         </p>
@@ -69,16 +74,18 @@ export function SignupPage() {
 
   return (
     <AuthShell
-      title="Create your account"
+      title={org ? 'Set up your organisation' : 'Create your account'}
       subtitle={
         <>
-          Already have one?{' '}
-          <Link to="/login" className="font-medium text-primary hover:underline">
+          {org ? 'Create your own login first. Next, you add your company and invite your team. ' : ''}
+          Already have an account?{' '}
+          <Link to={loginHref} className="font-medium text-primary hover:underline">
             Log in
           </Link>
         </>
       }
     >
+      <AudienceSwitch path="/signup" />
       <SocialButtons next={next} />
       <form onSubmit={submit} className="grid gap-4" noValidate>
         {err && !Object.keys(err.fields).length ? (

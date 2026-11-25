@@ -1,25 +1,28 @@
-import { BookOpen, Check, Info, Package } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { BookOpen, Check, CheckCircle2, Clock, Info, Package, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardBody } from '@/components/ui/card'
 import { EmptyState, ErrorState, PageHeader } from '@/components/ui/misc'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useCashPackages } from '@/features/b2c/api'
+import { useCashPackages, useMoney } from '@/features/b2c/api'
 import type { ReviewItem } from '@/pages/b2c/CheckoutReviewPage'
-import { money } from '@/lib/format'
-import { Link } from '@/lib/router'
+import { cn } from '@/lib/cn'
+import { Link, useNavigate } from '@/lib/router'
 
-// My Learning reads the real, server-granted enrolments — so landing there after payment
-// shows exactly what the server actually unlocked, never an assumption from the return URL.
-const SUCCESS = '/learn?welcome=package'
+// Stripe returns to /packages?bought=<id>: the page polls until the server shows the
+// bundle's courses as owned, never assuming success from the return URL.
 const CANCEL = '/packages'
 
 /** Cash course bundles: pay once, keep the courses. A full-price alternative to unlocking
  * with tokens or subscribing. */
 export function PackagesPage() {
-  const { data, isLoading, error, refetch } = useCashPackages()
+  const [params] = useSearchParams()
+  const bought = params.get('bought')
+  const { data, isLoading, error, refetch, isFetching } = useCashPackages(bought)
   const navigate = useNavigate()
+  const fmt = useMoney()
 
   const buy = (pkg: { id: string; name: string; amount_minor: number; currency: string; courses: { id: string }[] }) => {
     const item: ReviewItem = {
@@ -29,7 +32,7 @@ export function PackagesPage() {
       courseCount: pkg.courses.length,
       amountMinor: pkg.amount_minor,
       currency: pkg.currency,
-      successPath: SUCCESS,
+      successPath: `/packages?bought=${pkg.id}`,
       cancelPath: CANCEL,
     }
     navigate('/checkout/review', { state: item })
@@ -39,6 +42,7 @@ export function PackagesPage() {
     <div className="relative isolate min-h-[70vh]">
       <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <PageHeader title="Course bundles" description="Buy a themed set of courses together, in one payment." />
+        {bought ? <BoughtBanner pkg={data?.find((p) => p.id === bought)} loaded={!!data} checking={isFetching} recheck={() => void refetch()} /> : null}
 
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2">
@@ -61,7 +65,7 @@ export function PackagesPage() {
         ) : (
           <div className="stagger grid gap-5 md:grid-cols-2">
             {data.map((pkg) => (
-              <Card key={pkg.id} className="flex flex-col overflow-hidden transition-shadow hover:shadow-md">
+              <Card key={pkg.id} className={cn('flex flex-col overflow-hidden transition-shadow hover:shadow-md', pkg.id === bought && 'ring-2 ring-primary')}>
                 <div className="flex items-center gap-3 border-b border-border bg-primary-soft/30 px-5 py-4">
                   <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-on-primary">
                     <Package className="size-5" />
@@ -72,7 +76,7 @@ export function PackagesPage() {
                       {pkg.courses.length} {pkg.courses.length === 1 ? 'course' : 'courses'}
                     </p>
                   </div>
-                  <p className="text-xl font-bold">{money(pkg.amount_minor, pkg.currency)}</p>
+                  <p className="text-xl font-bold">{fmt(pkg.amount_minor, pkg.currency)}</p>
                 </div>
                 <CardBody className="flex flex-1 flex-col">
                   {pkg.description ? <p className="text-sm text-muted">{pkg.description}</p> : null}
@@ -112,5 +116,48 @@ export function PackagesPage() {
         )}
       </div>
     </div>
+  )
+}
+
+/** After paying for a bundle: confirming, ready, or taking longer than usual. */
+function BoughtBanner({ pkg, loaded, checking, recheck }: { pkg?: { name: string; owned_count: number; courses: unknown[] }; loaded: boolean; checking: boolean; recheck: () => void }) {
+  const ready = !!pkg && pkg.owned_count >= pkg.courses.length
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 60_000) // the polling above stops after about a minute
+    return () => clearTimeout(t)
+  }, [])
+  if (ready)
+    return (
+      <Card className="mb-6 animate-reveal border-success/40">
+        <CardBody className="flex items-start gap-3">
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0 animate-pop text-success" />
+          <div>
+            <p className="font-semibold">{pkg.name} is yours</p>
+            <p className="text-sm text-muted">
+              Payment confirmed and a receipt is on its way. The courses are in{' '}
+              <Link to="/learn" className="font-medium text-primary hover:underline">My learning</Link>.
+            </p>
+          </div>
+        </CardBody>
+      </Card>
+    )
+  return (
+    <Card className="mb-6 animate-reveal" role="status">
+      <CardBody className="flex flex-wrap items-start gap-3">
+        <Clock className={cn('mt-0.5 size-5 shrink-0 text-primary', !slow && 'animate-pulse')} />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">{slow || (loaded && !pkg) ? 'This is taking longer than usual' : 'Confirming your payment…'}</p>
+          <p className="text-sm text-muted">
+            {slow || (loaded && !pkg) ? "If Stripe took your payment, your courses unlock shortly. You won't be charged twice." : 'This usually takes a few seconds. This page updates itself.'}
+          </p>
+        </div>
+        {slow || (loaded && !pkg) ? (
+          <Button variant="secondary" size="sm" loading={checking} onClick={recheck}>
+            <RefreshCw /> Check again
+          </Button>
+        ) : null}
+      </CardBody>
+    </Card>
   )
 }

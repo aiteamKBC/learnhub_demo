@@ -1,5 +1,5 @@
 import { EyeOff, Flag, HelpCircle, MessageCircle, MessagesSquare, Search, ShieldCheck, Star } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -10,9 +10,11 @@ import { EmptyState, ErrorState, PageHeader, Rating, StatCard } from '@/componen
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type ModItem, type ModKind, type ModReport, useDismissReport, useHideReported, useModItems, useModReports, useModSummary, useSetHidden } from '@/features/console/moderation'
-import { ConfirmDialog, LoadMore, StatusPill, useTabParam } from '@/features/console/ui'
+import { ConfirmDialog, LoadMore, StatusPill, useParam, useTabParam } from '@/features/console/ui'
 import { useDebounced } from '@/features/org/ui'
+import { cn } from '@/lib/cn'
 import { relativeDate } from '@/lib/format'
+import { reducedMotion } from '@/lib/motion'
 import { Link } from '@/lib/router'
 
 const TABS = ['reported', 'review', 'question', 'answer'] as const
@@ -123,13 +125,13 @@ function ItemsTab({ kind }: { kind: ModKind }) {
   )
 }
 
-function ReportCard({ r }: { r: ModReport }) {
+function ReportCard({ r, linked }: { r: ModReport; linked?: boolean }) {
   const hide = useHideReported()
   const dismiss = useDismissReport()
   const [action, setAction] = useState<'hide' | 'dismiss' | null>(null)
   const open = r.status === 'open'
   return (
-    <li className="grid gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm">
+    <li id={`report-${r.id}`} className={cn('grid scroll-mt-24 gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm', linked && 'ring-2 ring-primary')} aria-current={linked ? 'true' : undefined}>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge tone="neutral">{NOUN[r.target_type as ModKind] ?? r.target_type}</Badge>
         {r.course ? <span className="max-w-[16rem] truncate text-muted">{r.course}</span> : null}
@@ -191,6 +193,11 @@ function ReportedTab() {
   const [status, setStatus] = useState('open')
   const list = useModReports(status)
   const rows = list.data?.pages.flatMap((p) => p.items) ?? []
+  const [report] = useParam('report') // notifications link to ?tab=reported&report=<id>
+  const found = !!report && rows.some((r) => String(r.id) === report)
+  useEffect(() => {
+    if (found) document.getElementById(`report-${report}`)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' })
+  }, [found, report])
   return (
     <Card className="min-w-0">
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
@@ -210,7 +217,7 @@ function ReportedTab() {
         <EmptyState icon={<ShieldCheck />} title={status === 'open' ? 'No open reports' : 'Nothing here'} body="When a learner reports a review, question or answer it appears here." />
       ) : (
         <div className="animate-reveal">
-          <ul className="stagger grid gap-3 p-4">{rows.map((r) => <ReportCard key={r.id} r={r} />)}</ul>
+          <ul className="stagger grid gap-3 p-4">{rows.map((r) => <ReportCard key={r.id} r={r} linked={String(r.id) === report} />)}</ul>
           <LoadMore shown={rows.length} noun="reports" hasMore={!!list.hasNextPage} loading={list.isFetchingNextPage} onMore={() => void list.fetchNextPage()} />
         </div>
       )}

@@ -10,7 +10,7 @@ import { companyDownload, useCompanyDeleteFile, useCompanyFiles, useCompanyUploa
 import { FilesPanel } from '@/features/corporate/FilesPanel'
 import { PageHeader } from '@/components/ui/misc'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
-import { DELIVERY_LABEL, PURCHASE_STATUS, QUOTE_STATUS, usePurchases, useQuotes } from '@/features/corporate/api'
+import { DELIVERY_LABEL, PURCHASE_STATUS, QUOTE_STATUS, usePurchases, useQuotes, watchedPurchase } from '@/features/corporate/api'
 import { gbp } from '@/features/corporate/format'
 import { QueryBlock, StatusBadge } from '@/features/corporate/ui'
 import { useIsOrgAdmin } from '@/features/org/api'
@@ -33,7 +33,16 @@ function PurchaseFiles({ id, title, onClose }: { id: string; title: string; onCl
 
 /** Back from Stripe: the webhook confirms payment a moment later, so we wait for it
  * instead of claiming success. */
-function PaymentNotice({ pending }: { pending: boolean }) {
+function PaymentNotice({ pending, failed }: { pending: boolean; failed: boolean }) {
+  if (failed)
+    return (
+      <Card className="mb-6 p-4 text-sm animate-reveal" role="status" aria-live="polite">
+        <p className="font-medium">The payment was not finished</p>
+        <p className="text-muted">
+          No money was taken. <Link to="/business/packages" className="font-medium text-primary hover:underline">Try again from course packages</Link>.
+        </p>
+      </Card>
+    )
   return (
     <Card className="mb-6 flex items-start gap-3 p-4 animate-reveal" role="status" aria-live="polite">
       {pending ? <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-info motion-reduce:animate-none" /> : <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" />}
@@ -57,10 +66,12 @@ function Purchases({ back }: { back: boolean }) {
   const q = usePurchases(back)
   const isAdmin = useIsOrgAdmin()
   const [filesFor, setFilesFor] = useState<{ id: string; title: string } | null>(null)
-  const pending = q.data?.some((p) => p.status === 'pending') ?? true
+  // only the purchase just paid for decides this (see watchedPurchase)
+  const watched = watchedPurchase(q.data)
+  const pending = !q.data || watched?.status === 'pending'
   return (
     <>
-      {back ? <PaymentNotice pending={pending} /> : null}
+      {back && (pending || watched) ? <PaymentNotice pending={pending} failed={['expired', 'voided'].includes(watched?.status ?? '')} /> : null}
       <Card>
         <CardHeader title="Purchases" description="Seats your company has bought" />
         <div className="mt-3">

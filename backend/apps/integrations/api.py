@@ -236,7 +236,11 @@ def invite(request, person_id: UUID, body: HrInviteIn):
 
     scope = _admin(request)
     person = _person(scope, person_id)
-    unit = get_object_or_404(OrgUnit, pk=body.unit_id, org_id=scope.org_id) if body.unit_id else None
+    unit = (
+        get_object_or_404(OrgUnit, pk=body.unit_id, org_id=scope.org_id, archived_at__isnull=True)
+        if body.unit_id
+        else None
+    )
     job_role = (
         get_object_or_404(JobRole, pk=body.job_role_id, org_id=scope.org_id) if body.job_role_id else None
     )
@@ -287,7 +291,11 @@ def link_department(request, dept_id: UUID, body: HrDepartmentLinkIn):
         ExternalDepartment.objects.select_related("connection"), pk=dept_id, org_id=scope.org_id
     )
     if body.create or body.unit_id:
-        unit = get_object_or_404(OrgUnit, pk=body.unit_id, org_id=scope.org_id) if body.unit_id else None
+        unit = (
+            get_object_or_404(OrgUnit, pk=body.unit_id, org_id=scope.org_id, archived_at__isnull=True)
+            if body.unit_id
+            else None
+        )
         dept = services.link_department(dept=dept, unit=unit, create=body.create)
         audit_request(
             request,
@@ -339,7 +347,7 @@ def training_records(request):
     return [
         {"id": r.id, "person_name": r.person.display_name if r.person else None, "title": r.title,
          "completion_date": r.completion_date, "status": r.status, "applied": r.applied_record_id is not None}
-        for r in selectors.training_records(_conn(scope))
+        for r in selectors.training_records(scope, _conn(scope))
     ]  # fmt: skip
 
 

@@ -9,8 +9,15 @@ import { Field, Input, Textarea } from '@/components/ui/input'
 import { EmptyState, ErrorState, PageHeader, StatCard } from '@/components/ui/misc'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
+import { GRANT_SOURCE_LABEL, LEDGER_KIND_LABEL } from '@/features/b2c/api'
 import { useAdjustWallet, useAdminStudentSearch, useAdminWallet, useAdminWalletLedger } from '@/features/b2c/console'
 import { dateTime, SearchBox } from '@/features/console/money-ui'
+import { ConfirmDialog } from '@/features/console/ui'
+
+// staff read "our team" as themselves: name it plainly here
+const SOURCE: Record<string, string> = { ...GRANT_SOURCE_LABEL, admin: 'Staff adjustment' }
+const KIND: Record<string, string> = { ...LEDGER_KIND_LABEL, admin_clawback: 'Removed by staff' }
+const words = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 import { count } from '@/lib/format'
 
 /** Console > Wallet. Staff find a learner, read their token balance, grants and ledger, and
@@ -97,10 +104,10 @@ function WalletDetail({ user, onBack }: { user: { id: string; name: string; emai
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-lg font-semibold">{user.name || user.email}</p>
-          <p className="text-sm text-muted">{user.email}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-lg font-semibold">{user.name || user.email}</p>
+          <p className="truncate text-sm text-muted">{user.email}</p>
         </div>
         <Button variant="ghost" size="sm" onClick={onBack}>
           ← Back to search
@@ -124,7 +131,7 @@ function WalletDetail({ user, onBack }: { user: { id: string; name: string; emai
             />
           </div>
 
-          <AdjustForm userId={user.id} />
+          <AdjustForm userId={user.id} who={user.name || user.email} balance={wallet.data?.balance.balance ?? 0} />
 
           <Card>
             <CardHeader title="Grants" description={`${wallet.data?.grants.length ?? 0} most recent`} />
@@ -143,7 +150,7 @@ function WalletDetail({ user, onBack }: { user: { id: string; name: string; emai
                 <tbody>
                   {wallet.data?.grants.map((g) => (
                     <Tr key={g.id}>
-                      <Td className="capitalize">{g.source}</Td>
+                      <Td>{SOURCE[g.source] ?? words(g.source)}</Td>
                       <Td className="tabular-nums">{count(g.amount)}</Td>
                       <Td className="tabular-nums">{count(g.remaining)}</Td>
                       <Td className="whitespace-nowrap text-muted">{dateTime(g.granted_at)}</Td>
@@ -160,6 +167,8 @@ function WalletDetail({ user, onBack }: { user: { id: string; name: string; emai
             <CardHeader title="Ledger" description="Every movement, newest first" />
             {ledger.isLoading ? (
               <Skeleton className="m-4 h-32 rounded-lg" />
+            ) : ledger.error ? (
+              <ErrorState message="We couldn't load the ledger." onRetry={() => void ledger.refetch()} />
             ) : !ledger.data?.length ? (
               <p className="p-4 text-sm text-muted">No ledger entries.</p>
             ) : (
@@ -178,7 +187,7 @@ function WalletDetail({ user, onBack }: { user: { id: string; name: string; emai
                     {ledger.data.map((e) => (
                       <Tr key={e.id}>
                         <Td className="whitespace-nowrap text-muted">{dateTime(e.created_at)}</Td>
-                        <Td className="capitalize">{e.kind.replace(/_/g, ' ')}</Td>
+                        <Td>{KIND[e.kind] ?? words(e.kind)}</Td>
                         <Td className={`tabular-nums ${e.amount < 0 ? 'text-danger' : 'text-success'}`}>
                           {e.amount > 0 ? '+' : ''}
                           {count(e.amount)}
@@ -198,14 +207,16 @@ function WalletDetail({ user, onBack }: { user: { id: string; name: string; emai
   )
 }
 
-function AdjustForm({ userId }: { userId: string }) {
+function AdjustForm({ userId, who, balance }: { userId: string; who: string; balance: number }) {
   const adjust = useAdjustWallet()
   const [sign, setSign] = useState<1 | -1>(1)
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
+  const [confirming, setConfirming] = useState(false)
 
-  const n = parseInt(amount, 10)
-  const valid = Number.isFinite(n) && n > 0 && note.trim().length >= 3
+  // whole tokens only: "1.5" or "1e3" are refused rather than quietly rounded
+  const n = /^\d+$/.test(amount.trim()) ? Number(amount.trim()) : NaN
+  const valid = Number.isSafeInteger(n) && n > 0 && note.trim().length >= 3
 
   const submit = () => {
     if (!valid) return
@@ -213,9 +224,10 @@ function AdjustForm({ userId }: { userId: string }) {
       { userId, amount: sign * n, note: note.trim() },
       {
         onSuccess: () => {
-          toast.success(`Wallet ${sign > 0 ? 'credited' : 'debited'} by ${n} tokens.`)
+          toast.success(`${sign > 0 ? 'Added' : 'Removed'} ${count(n)} tokens.`)
           setAmount('')
           setNote('')
+          setConfirming(false)
         },
         onError: (e) => toast.error((e as Error).message),
       },
@@ -235,19 +247,29 @@ function AdjustForm({ userId }: { userId: string }) {
           </Button>
         </div>
         <div className="grid gap-4">
-          <Field label="Amount (tokens)">
-            {(p) => <Input {...p} type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100" />}
+          <Field label="Amount (tokens)" error={amount.trim() && !Number.isSafeInteger(n) ? 'Enter a whole number of tokens.' : undefined}>
+            {(p) => <Input {...p} type="number" min="1" step="1" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100" />}
           </Field>
           <Field label="Reason (required)" hint="Shown in the audit trail and the learner's ledger.">
             {(p) => <Textarea {...p} value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Why are you adjusting this balance?" />}
           </Field>
           <div>
-            <Button disabled={!valid} loading={adjust.isPending} onClick={submit}>
+            <Button disabled={!valid} onClick={() => setConfirming(true)}>
               Apply adjustment
             </Button>
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        tone={sign > 0 ? 'primary' : 'danger'}
+        title={sign > 0 ? `Add ${count(n || 0)} tokens?` : `Remove ${count(n || 0)} tokens?`}
+        body={<>{who} has {count(balance)} tokens now and will have {count(Math.max(0, balance + sign * (n || 0)))}. Your reason goes in the audit trail and their history.</>}
+        confirmLabel={sign > 0 ? 'Add tokens' : 'Remove tokens'}
+        loading={adjust.isPending}
+        onConfirm={submit}
+      />
     </Card>
   )
 }

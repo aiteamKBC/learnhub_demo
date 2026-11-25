@@ -18,15 +18,18 @@ export type Submission = components['schemas']['SubmissionOut']
 /** A quiz answer, in the shape the server grades (see learning/grading.py). */
 export type Answer = string | string[] | Record<string, string>
 
+/** My courses, 24 at a time (keyset cursor: "Load more"). */
 export function useMyCourses(status = 'all') {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['my-courses', status],
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       unwrap(
         api.GET('/api/v1/learning/my/courses', {
-          params: { query: { status, limit: 24 } },
+          params: { query: { status, limit: 24, cursor: pageParam } },
         }),
       ),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
   })
 }
 

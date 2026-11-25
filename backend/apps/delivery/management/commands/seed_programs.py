@@ -182,7 +182,7 @@ class Seeder:
 
         fill = {"module": module, "week": week}
         fields = {"expected_otj_min": c.get("otj_min", 0), "cpd_min": c.get("cpd_min", 0)}
-        if c["kind"] == Lecture.Kind.ARTICLE:
+        if c["kind"] == Lecture.Kind.ARTICLE or c.get("body"):  # live sessions carry their purpose
             fields["body"] = c["body"].format(**fill)
         lecture = services.add_lecture(
             section=section, kind=c["kind"], title=c["title"].format(**fill), **fields

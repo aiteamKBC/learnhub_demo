@@ -47,6 +47,9 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(seed, migrations.RunPython.noop),
+        # The seeded assignments leave deferred foreign-key checks queued; Postgres refuses
+        # ALTER TABLE on a table with queued checks, so run them now (a no-op when nothing was seeded).
+        migrations.RunSQL("SET CONSTRAINTS ALL IMMEDIATE", migrations.RunSQL.noop),
         migrations.RunSQL(*rls.reference("identity", "staff_roles")),
         migrations.RunSQL(*rls.reference("identity", "staff_role_assignments")),
     ]

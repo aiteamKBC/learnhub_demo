@@ -75,7 +75,7 @@ export function PeoplePage() {
   const people = usePeople(filters)
   const rows = people.data?.pages.flatMap((p) => p.items) ?? []
   // one call per loaded page of people; empty unless an HR system is connected
-  const { data: leave } = useHrLeave(rows.map((p) => p.member_id))
+  const leave = useHrLeave(people.data?.pages.map((p) => p.items.map((r) => r.member_id)) ?? [])
   const filtered = !!(filters.q || filters.unit_id || filters.job_role_id || filters.role)
 
   // typing updates ?q= after a pause; the header search can also change ?q= while this

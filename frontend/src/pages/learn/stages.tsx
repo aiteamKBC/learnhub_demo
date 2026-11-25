@@ -301,6 +301,12 @@ export function LiveStage(props: StageProps) {
           )}
         </div>
       </div>
+      {lecture.body ? (
+        <div className="mt-8">
+          <h2 className="mb-2 text-sm font-semibold text-muted">About this session</h2>
+          <Html html={lecture.body} />
+        </div>
+      ) : null}
       {lecture.resources?.length ? <Resources {...props} className="mt-8" /> : null}
       <CompleteBar {...props} className="mt-10" />
     </Sheet>

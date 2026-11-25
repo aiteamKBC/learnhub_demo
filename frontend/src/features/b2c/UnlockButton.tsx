@@ -1,4 +1,4 @@
-import { Check, Coins, Lock, Sparkles } from 'lucide-react'
+import { Check, Coins, Lock, RefreshCw, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -11,13 +11,15 @@ import { useAccess, useUnlock, useWalletBalance, type UnlockScope } from '@/feat
 import { count } from '@/lib/format'
 import { Link } from '@/lib/router'
 
+// keys are the access resolver's sources (backend apps/platform/access.py)
 const SOURCE_LABEL: Record<string, string> = {
-  legacy: 'Already owned',
-  package: 'Included in a package you bought',
-  token: 'Unlocked with tokens',
+  legacy_purchase: 'You already own this',
+  cash_package: 'Included in a package you bought',
+  full_course_token_unlock: 'Unlocked with tokens',
+  token_unlock: 'Unlocked with tokens',
   subscription: 'Included in your subscription',
   preview: 'Free preview',
-  admin: 'Granted by LearnHub',
+  admin_grant: 'Granted by our team',
 }
 
 const SCOPE_NOUN: Record<UnlockScope, string> = { course: 'course', lecture: 'lecture', material: 'material' }
@@ -33,6 +35,7 @@ export function UnlockButton({
   title,
   size = 'md',
   className,
+  skeletonClassName,
   onUnlocked,
 }: {
   scope: UnlockScope
@@ -41,6 +44,8 @@ export function UnlockButton({
   title?: string
   size?: 'sm' | 'md' | 'lg'
   className?: string
+  /** Size of the placeholder while access loads (defaults to the button's size). */
+  skeletonClassName?: string
   onUnlocked?: () => void
 }) {
   const access = useAccess(scope, targetId)
@@ -48,7 +53,7 @@ export function UnlockButton({
   const unlock = useUnlock()
   const [open, setOpen] = useState(false)
 
-  if (access.isLoading) return <Skeleton className={className ?? 'h-10 w-40 rounded-md'} />
+  if (access.isLoading) return <Skeleton className={skeletonClassName ?? className ?? 'h-10 w-40 rounded-md'} />
 
   // Resolver is the authority: if access is granted, show how — never a purchase prompt.
   if (access.data?.allowed) {
@@ -68,8 +73,10 @@ export function UnlockButton({
     )
   }
 
+  // never treat an unknown balance as 0: wait for it, or say it failed
+  const known = balance.data != null
   const bal = balance.data?.balance ?? 0
-  const affordable = bal >= tokenPrice
+  const affordable = known && bal >= tokenPrice
   const after = bal - tokenPrice
 
   const confirm = () => {
@@ -107,11 +114,22 @@ export function UnlockButton({
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-surface-2/50 p-4">
             <Row label="Cost" value={`${count(tokenPrice)} tokens`} strong />
-            <Row label="Your balance" value={`${count(bal)} tokens`} />
+            {known ? <Row label="Your balance" value={`${count(bal)} tokens`} /> : null}
             {affordable ? <Row label="After unlocking" value={`${count(after)} tokens`} /> : null}
           </div>
 
-          {affordable ? (
+          {!known ? (
+            balance.isError ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+                <span>We couldn't load your token balance.</span>
+                <Button size="sm" variant="secondary" loading={balance.isFetching} onClick={() => void balance.refetch()}>
+                  <RefreshCw /> Try again
+                </Button>
+              </div>
+            ) : (
+              <Skeleton className="h-9 rounded-md" />
+            )
+          ) : affordable ? (
             <>
               <p className="flex items-start gap-2 text-sm text-muted">
                 <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />

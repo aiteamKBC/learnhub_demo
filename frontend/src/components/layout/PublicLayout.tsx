@@ -1,4 +1,4 @@
-import { BookOpen, LayoutGrid, Search, ShoppingCart } from 'lucide-react'
+import { BookOpen, Building2, LayoutGrid, Search, ShoppingCart } from 'lucide-react'
 import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react'
 import { Outlet, useSearchParams } from 'react-router-dom'
 
@@ -13,6 +13,7 @@ import { usePublicSettings } from '@/features/platform/api'
 import { cn } from '@/lib/cn'
 import { useOn } from '@/lib/motion'
 
+import { AdminButtons } from './AdminButtons'
 import { BottomNav } from './BottomNav'
 import { CurrencyMenu } from './CurrencyMenu'
 import { NotificationBell } from './NotificationBell'
@@ -194,11 +195,18 @@ export function PublicLayout() {
             </span>
             <ThemeToggle />
             <CartButton />
+            {me ? <AdminButtons /> : null}
             {me ? <NotificationBell /> : null}
             {isLoading ? null : me ? (
               <UserMenu />
             ) : (
               <>
+                {/* companies have their own way in: the log-in page opens on its organisation side */}
+                <Button variant="secondary" size="sm" asChild className="mr-1 hidden lg:inline-flex">
+                  <Link to="/login?as=org">
+                    <Building2 /> For organisations
+                  </Link>
+                </Button>
                 <Button variant="ghost" asChild className="hidden sm:inline-flex">
                   <Link to="/login">Log in</Link>
                 </Button>

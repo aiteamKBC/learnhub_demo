@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { type AuditFilters, type AuditRow, auditCsvPath, useAudit, useAuditActions } from '@/features/console/audit'
 import { useBroadcastCompanies } from '@/features/console/comms'
-import { ExportButton, LoadMore, useParam } from '@/features/console/ui'
+import { ExportButton, LoadMore, useParam, usePatchParams } from '@/features/console/ui'
 import { useDebounced } from '@/features/org/ui'
 import { cn } from '@/lib/cn'
 
@@ -60,6 +60,7 @@ export function ConsoleAuditPage() {
   const [action, setAction] = useParam('action')
   const [start, setStart] = useParam('start')
   const [end, setEnd] = useParam('end')
+  const patchParams = usePatchParams()
   const [q, setQ] = useState('')
   const [actorText, setActorText] = useState(actor)
   const debouncedQ = useDebounced(q)
@@ -71,7 +72,7 @@ export function ConsoleAuditPage() {
   const [open, setOpen] = useState<number | null>(null)
   const rows = list.data?.pages.flatMap((p) => p.items) ?? []
   const filtered = Object.values(filters).some((v) => v && String(v).trim())
-  const clear = () => (setActor(''), setActorText(''), setOrg(''), setAction(''), setStart(''), setEnd(''), setQ(''))
+  const clear = () => (patchParams({ actor: '', company: '', action: '', start: '', end: '' }), setActorText(''), setQ(''))
   return (
     <>
       <PageHeader title="Audit log" description="Every change made by staff and company admins: who, what, when and from where." actions={<ExportButton path={auditCsvPath(filters)} filename="audit-log.csv" label="Export CSV" />} />

@@ -25,6 +25,7 @@ from apps.compliance.services import _add_months
 from apps.org import services as org_services
 from apps.org.models import Invite, OrgMember, OrgUnit, UnitManager
 from core.errors import ServiceError
+from core.tenancy import tenant_context
 
 from . import breathe, normalizers, secrets
 from .models import (
@@ -42,13 +43,10 @@ log = logging.getLogger(__name__)
 HR_URL = "/business/hr-system"
 PROVIDER = "Breathe HR"
 STALE_RUN = timedelta(minutes=30)  # a run "running" longer than this is treated as dead
+STOPPED = (HrConnection.Status.DISABLED, HrConnection.Status.PAUSED)  # an admin stopped syncing
 
 
 # ---------------------------------------------------------------- helpers
-def _client(conn: HrConnection, api_key: str | None = None) -> breathe.BreatheClient:
-    return breathe.BreatheClient(conn.base_url, api_key or secrets.decrypt(conn.secret_ciphertext))
-
-
 def _base_url(environment: str) -> str:
     return breathe.SANDBOX if environment == "sandbox" else breathe.PRODUCTION
 
@@ -57,10 +55,19 @@ def _features(features) -> list[str]:
     return [f for f in HrConnection.FEATURES if f in set(features or ())]
 
 
+def _clean_key(api_key: str) -> str:
+    api_key = (api_key or "").strip()
+    if len(api_key) < 8 or len(api_key) > 200:
+        raise ServiceError("bad_key", "Paste the full API key from Breathe (Settings > API).")
+    secrets.encrypt("check")  # fails early with 503 when the server has no encryption key
+    return api_key
+
+
 def _read_account(base_url: str, api_key: str) -> tuple[str, str]:
-    """(account id, account name) as Breathe reports them; translates client errors."""
+    """(account id, account name) as Breathe reports them; translates client errors.
+    Called on web requests BEFORE any database write, with short timeouts."""
     try:
-        with breathe.BreatheClient(base_url, api_key) as client:
+        with breathe.BreatheClient.for_request(base_url, api_key) as client:
             acc = client.account()
     except breathe.BreatheError as exc:
         status = 400 if exc.code in ("bad_key", "bad_origin") else 502
@@ -90,15 +97,16 @@ def _tell_admins(org_id, code: str, context: dict, dedupe: str) -> None:
 
 
 # ---------------------------------------------------------------- connection
-@transaction.atomic
 def connect(*, org_id, api_key: str, environment: str, features, by) -> HrConnection:
     """Check the key with Breathe, then create (or re-open) the company's one connection."""
-    api_key = (api_key or "").strip()
-    if len(api_key) < 8 or len(api_key) > 200:
-        raise ServiceError("bad_key", "Paste the full API key from Breathe (Settings > API).")
-    secrets.encrypt("check")  # fails early with 503 when the server has no encryption key
+    api_key = _clean_key(api_key)
     base_url = _base_url(environment)
-    acc_id, acc_name = _read_account(base_url, api_key)
+    acc_id, acc_name = _read_account(base_url, api_key)  # Breathe first, then the short write
+    with transaction.atomic():
+        return _save_connection(org_id, acc_id, acc_name, base_url, api_key, features, by)
+
+
+def _save_connection(org_id, acc_id, acc_name, base_url, api_key, features, by) -> HrConnection:
     conn = HrConnection.objects.select_for_update().filter(org_id=org_id).first()
     if conn and conn.external_account_id != acc_id and conn.people.exists():
         raise ServiceError(
@@ -115,15 +123,16 @@ def connect(*, org_id, api_key: str, environment: str, features, by) -> HrConnec
     try:
         with transaction.atomic():
             conn.save()
-    except IntegrityError:
-        # uq_hrconn_account: another company already connected this Breathe account (RLS hides it)
+    except IntegrityError as exc:
+        if "uq_hrconn_account" not in str(exc):
+            raise
+        # another company already connected this Breathe account (RLS hides it)
         raise ServiceError(
             "account_in_use", "This Breathe account is already connected to another company.", status=409
         ) from None
     return conn
 
 
-@transaction.atomic
 def validate(*, conn: HrConnection) -> HrConnection:
     acc_id, acc_name = _read_account(conn.base_url, secrets.decrypt(conn.secret_ciphertext))
     if acc_id != conn.external_account_id:
@@ -137,9 +146,8 @@ def validate(*, conn: HrConnection) -> HrConnection:
     return conn
 
 
-@transaction.atomic
 def replace_key(*, conn: HrConnection, api_key: str) -> HrConnection:
-    api_key = (api_key or "").strip()
+    api_key = _clean_key(api_key)
     acc_id, acc_name = _read_account(conn.base_url, api_key)
     if acc_id != conn.external_account_id:
         raise ServiceError(
@@ -170,13 +178,17 @@ def set_paused(*, conn: HrConnection, paused: bool) -> HrConnection:
 def disconnect(*, conn: HrConnection) -> None:
     """Stop syncing and forget the key. Imported people, links and records stay."""
     conn.status, conn.secret_ciphertext = HrConnection.Status.DISABLED, ""
-    conn.save(update_fields=["status", "secret_ciphertext", "updated_at"])
+    with transaction.atomic():
+        conn.save(update_fields=["status", "secret_ciphertext", "updated_at"])
+        _cancel_runs(conn, statuses=(HrSyncRun.Status.QUEUED,))
 
 
 # ---------------------------------------------------------------- syncing
 @transaction.atomic
 def queue_sync(*, conn: HrConnection, trigger: str = "manual", by=None, key: str = "") -> HrSyncRun:
-    if conn.status in (HrConnection.Status.DISABLED, HrConnection.Status.PAUSED):
+    # the row lock makes two "Sync now" clicks (or a click and the hourly beat) take turns
+    conn = HrConnection.objects.select_for_update().only("id", "org_id", "status").get(pk=conn.pk)
+    if conn.status in STOPPED:
         raise ServiceError("not_active", "Syncing is paused or disconnected.", status=409)
     busy = HrSyncRun.objects.filter(
         connection=conn, status__in=(HrSyncRun.Status.QUEUED, HrSyncRun.Status.RUNNING),
@@ -196,72 +208,129 @@ def queue_sync(*, conn: HrConnection, trigger: str = "manual", by=None, key: str
     return run
 
 
-def process_sync(run_id) -> HrSyncRun:
-    """Read everything enabled from Breathe and bring LearnHub in step. Runs in a task,
-    inside the company's RLS context. A failure marks the run failed and the connection
-    "needs attention", and tells the company's admins."""
-    run = HrSyncRun.objects.select_related("connection").get(pk=run_id)
-    if run.status not in (HrSyncRun.Status.QUEUED, HrSyncRun.Status.RUNNING):
-        return run
-    conn = run.connection
-    HrSyncRun.objects.filter(pk=run.pk).update(status=HrSyncRun.Status.RUNNING, started_at=timezone.now())
+def process_sync(run_id, *, org_id) -> HrSyncRun:
+    """Read everything enabled from Breathe and bring LearnHub in step. Runs in a task.
+
+    Three steps, so no database transaction is ever held open while Breathe answers
+    (lms_app ends a transaction left idle for 30 s): claim the run and read the key in
+    one short transaction; fetch every page with no transaction open; write it all in
+    one transaction. A failure marks the run failed and the connection "needs
+    attention", and tells the company's admins. A paused or disconnected connection's
+    run is cancelled instead, and nothing is written."""
+    with tenant_context(org_id=org_id):
+        run = HrSyncRun.objects.select_related("connection").get(pk=run_id)
+        conn = run.connection
+        if conn.status in STOPPED:
+            _cancel_runs(conn, run_id=run.pk)
+            run.refresh_from_db()
+            return run
+        claimed = HrSyncRun.objects.filter(pk=run.pk, status=HrSyncRun.Status.QUEUED).update(
+            status=HrSyncRun.Status.RUNNING, started_at=timezone.now()
+        )
+        if not claimed:  # another worker has it, or it already finished
+            return run
+        ciphertext = conn.secret_ciphertext
     try:
-        with transaction.atomic():
-            counts = _sync(conn)
+        fetched = _fetch(conn, secrets.decrypt(ciphertext))
     except (breathe.BreatheError, ServiceError) as exc:
         return _fail(run, conn, getattr(exc, "code", "error"), str(exc))
     except Exception:  # noqa: BLE001 - any crash must still close the run and warn the admins
-        log.exception("HR sync %s crashed", run.id)
+        log.exception("HR sync %s crashed while reading Breathe", run.id)
         return _fail(run, conn, "crashed", "Something went wrong while syncing. Try again shortly.")
-    with transaction.atomic():
-        last = (
-            HrSyncRun.objects.filter(connection=conn, status=HrSyncRun.Status.COMPLETED)
-            .exclude(pk=run.pk)
-            .order_by("-created_at")
-            .values_list("counts", flat=True)
-            .first()
-        )
-        before = (last or {}).get("to_review")
-        HrSyncRun.objects.filter(pk=run.pk).update(
-            status=HrSyncRun.Status.COMPLETED, counts=counts, finished_at=timezone.now()
-        )
-        HrConnection.objects.filter(pk=conn.pk).update(
-            last_sync_at=timezone.now(), last_error="",
-            status=HrConnection.Status.ACTIVE if conn.status == HrConnection.Status.ATTENTION else conn.status,
-        )  # fmt: skip
-        if counts["new_people"] and counts["to_review"] and before != counts["to_review"]:
-            _tell_admins(conn.org_id, "hr_people_to_review", {"count": counts["to_review"]},
-                         dedupe=f"hr-review:{conn.id}:{timezone.now():%Y-%m-%d}")  # fmt: skip
-    run.refresh_from_db()
+    try:
+        with tenant_context(org_id=org_id):
+            engine.allow_long_statements()
+            # paused or disconnected while Breathe was being read: keep what is there
+            conn = HrConnection.objects.select_for_update().get(pk=conn.pk)
+            if conn.status in STOPPED:
+                _cancel_runs(conn, run_id=run.pk)
+            else:
+                _finish(run, conn, _write(conn, fetched))
+    except Exception:  # noqa: BLE001
+        log.exception("HR sync %s crashed while saving", run.id)
+        return _fail(run, conn, "crashed", "Something went wrong while syncing. Try again shortly.")
+    with tenant_context(org_id=org_id):
+        run.refresh_from_db()
     return run
+
+
+def _cancel_runs(
+    conn: HrConnection, *, run_id=None, statuses=(HrSyncRun.Status.QUEUED, HrSyncRun.Status.RUNNING)
+):
+    """Close runs of a paused or disconnected connection (failed, code "cancelled"; nobody
+    is notified: an admin chose this)."""
+    runs = HrSyncRun.objects.filter(connection=conn, status__in=statuses)
+    if run_id is not None:
+        runs = runs.filter(pk=run_id)
+    runs.update(
+        status=HrSyncRun.Status.FAILED, error_code="cancelled", finished_at=timezone.now(),
+        error_message="Stopped because syncing was paused or disconnected.",
+    )  # fmt: skip
+
+
+def _finish(run: HrSyncRun, conn: HrConnection, counts: dict) -> None:
+    last = (
+        HrSyncRun.objects.filter(connection=conn, status=HrSyncRun.Status.COMPLETED)
+        .exclude(pk=run.pk)
+        .order_by("-created_at")
+        .values_list("counts", flat=True)
+        .first()
+    )
+    before = (last or {}).get("to_review")
+    now = timezone.now()
+    HrSyncRun.objects.filter(pk=run.pk).update(
+        status=HrSyncRun.Status.COMPLETED, counts=counts, finished_at=now
+    )
+    HrConnection.objects.filter(pk=conn.pk).update(last_sync_at=now, last_error="", updated_at=now)
+    # only "needs attention" recovers; a status an admin set is never overwritten
+    HrConnection.objects.filter(pk=conn.pk, status=HrConnection.Status.ATTENTION).update(
+        status=HrConnection.Status.ACTIVE
+    )
+    if counts["new_people"] and counts["to_review"] and before != counts["to_review"]:
+        _tell_admins(conn.org_id, "hr_people_to_review", {"count": counts["to_review"]},
+                     dedupe=f"hr-review:{conn.id}:{now:%Y-%m-%d}")  # fmt: skip
 
 
 def _fail(run: HrSyncRun, conn: HrConnection, code: str, message: str) -> HrSyncRun:
-    with transaction.atomic():
+    with tenant_context(org_id=conn.org_id):
+        now = timezone.now()
         HrSyncRun.objects.filter(pk=run.pk).update(
-            status=HrSyncRun.Status.FAILED,
-            error_code=code[:40],
-            error_message=message[:300],
-            finished_at=timezone.now(),
+            status=HrSyncRun.Status.FAILED, error_code=code[:40], error_message=message[:300], finished_at=now
         )
-        HrConnection.objects.filter(pk=conn.pk).update(
-            status=HrConnection.Status.ATTENTION, last_error=message[:300], updated_at=timezone.now()
-        )
-        if code == "bad_key":
+        # a paused or disconnected connection stays as the admin left it, and nobody is told
+        flagged = HrConnection.objects.filter(
+            pk=conn.pk, status__in=(HrConnection.Status.ACTIVE, HrConnection.Status.ATTENTION)
+        ).update(status=HrConnection.Status.ATTENTION, last_error=message[:300], updated_at=now)
+        if flagged and code == "bad_key":
             _tell_admins(
-                conn.org_id,
-                "hr_connection_attention",
-                {},
-                dedupe=f"hr-key:{conn.id}:{timezone.now():%Y-%m-%d}",
+                conn.org_id, "hr_connection_attention", {}, dedupe=f"hr-key:{conn.id}:{now:%Y-%m-%d}"
             )
-        else:
+        elif flagged:
             _tell_admins(conn.org_id, "hr_sync_failed", {"error": message},
-                         dedupe=f"hr-fail:{conn.id}:{timezone.now():%Y-%m-%dT%H}")  # fmt: skip
-    run.refresh_from_db()
+                         dedupe=f"hr-fail:{conn.id}:{now:%Y-%m-%dT%H}")  # fmt: skip
+        run.refresh_from_db()
     return run
 
 
-def _sync(conn: HrConnection) -> dict:
+def _fetch(conn: HrConnection, api_key: str) -> dict:
+    """Every enabled resource from Breathe, normalised. No database access here."""
+
+    def rows(client, resource, normalize):
+        return [r for r in map(normalize, client.list(resource)) if r is not None]
+
+    out = {"departments": [], "employees": [], "training": [], "leave": []}
+    with breathe.BreatheClient(conn.base_url, api_key) as client:
+        if conn.has("departments") or conn.has("managers"):
+            out["departments"] = rows(client, "departments", normalizers.department)
+        out["employees"] = rows(client, "employees", normalizers.employee)
+        if conn.has("training"):
+            out["training"] = rows(client, "training", normalizers.training)
+        if conn.has("leave"):
+            out["leave"] = rows(client, "leave", normalizers.leave)
+    return out
+
+
+def _write(conn: HrConnection, fetched: dict) -> dict:
     now = timezone.now()
     counts = {
         "people": 0,
@@ -272,68 +341,59 @@ def _sync(conn: HrConnection) -> dict:
         "applied": 0,
         "leave": 0,
     }
-    with _client(conn) as client:
-        if conn.has("departments") or conn.has("managers"):
-            for raw in client.list("departments"):
-                row = normalizers.department(raw)
-                if row is None:
-                    continue
-                ExternalDepartment.objects.update_or_create(
-                    connection=conn, external_department_id=row["external_department_id"],
-                    defaults={"org_id": conn.org_id, "name": row["name"], "last_seen_at": now},
-                )  # fmt: skip
-                counts["departments"] += 1
-            _auto_link_departments(conn)
-
-        for raw in client.list("employees"):
-            row = normalizers.employee(raw)
-            if row is None:
-                continue
-            _, created = ExternalPerson.objects.update_or_create(
-                connection=conn, external_employee_id=row.pop("external_employee_id"),
-                defaults={"org_id": conn.org_id, "last_seen_at": now, **row},
+    if conn.has("departments") or conn.has("managers"):
+        for row in fetched["departments"]:
+            ExternalDepartment.objects.update_or_create(
+                connection=conn, external_department_id=row["external_department_id"],
+                defaults={"org_id": conn.org_id, "name": row["name"], "last_seen_at": now},
             )  # fmt: skip
-            counts["people"] += 1
-            counts["new_people"] += created
-            counts["leavers"] += row["is_leaver"]
+            counts["departments"] += 1
+        _auto_link_departments(conn)
 
-        if conn.has("training"):
-            people = dict(
-                ExternalPerson.objects.filter(connection=conn).values_list("external_employee_id", "id")
-            )
-            for raw in client.list("training"):
-                row = normalizers.training(raw)
-                if row is None:
-                    continue
-                ExternalTrainingRecord.objects.update_or_create(
-                    connection=conn, external_training_id=row.pop("external_training_id"),
-                    defaults={"org_id": conn.org_id, "person_id": people.get(row["external_employee_id"]), **row},
-                )  # fmt: skip
-                counts["training"] += 1
+    for row in fetched["employees"]:
+        row = dict(row)
+        _, created = ExternalPerson.objects.update_or_create(
+            connection=conn, external_employee_id=row.pop("external_employee_id"),
+            defaults={"org_id": conn.org_id, "last_seen_at": now, **row},
+        )  # fmt: skip
+        counts["people"] += 1
+        counts["new_people"] += created
+        counts["leavers"] += row["is_leaver"]
 
-        if conn.has("leave"):
-            people = dict(
-                ExternalPerson.objects.filter(connection=conn).values_list("external_employee_id", "id")
-            )
-            seen: list[str] = []
-            for raw in client.list("leave"):
-                row = normalizers.leave(raw)
-                if row is None or row["ends_on"] < now.date():
-                    continue  # only current and future leave matters
-                ref = row.pop("source_ref")
-                ExternalLeave.objects.update_or_create(
-                    connection=conn, source_ref=ref,
-                    defaults={"org_id": conn.org_id, "person_id": people.get(row["external_employee_id"]), **row},
-                )  # fmt: skip
-                seen.append(ref)
-                counts["leave"] += 1
-            # leave that was cancelled in Breathe, or has ended, stops showing
-            ExternalLeave.objects.filter(connection=conn).filter(
-                Q(ends_on__lt=now.date()) | ~Q(source_ref__in=seen)
-            ).delete()
+    people = dict(ExternalPerson.objects.filter(connection=conn).values_list("external_employee_id", "id"))
+    if conn.has("training"):
+        for row in fetched["training"]:
+            row = dict(row)
+            ExternalTrainingRecord.objects.update_or_create(
+                connection=conn, external_training_id=row.pop("external_training_id"),
+                defaults={"org_id": conn.org_id, "person_id": people.get(row["external_employee_id"]), **row},
+            )  # fmt: skip
+            counts["training"] += 1
 
-    for person in ExternalPerson.objects.filter(connection=conn, member__isnull=False):
-        _place_in_department(conn, person)
+    if conn.has("leave"):
+        seen: list[str] = []
+        for row in fetched["leave"]:
+            if row["ends_on"] < now.date():
+                continue  # only current and future leave matters
+            row = dict(row)
+            ref = row.pop("source_ref")
+            ExternalLeave.objects.update_or_create(
+                connection=conn, source_ref=ref,
+                defaults={"org_id": conn.org_id, "person_id": people.get(row["external_employee_id"]), **row},
+            )  # fmt: skip
+            seen.append(ref)
+            counts["leave"] += 1
+        # leave that was cancelled in Breathe, or has ended, stops showing
+        ExternalLeave.objects.filter(connection=conn).filter(
+            Q(ends_on__lt=now.date()) | ~Q(source_ref__in=seen)
+        ).delete()
+
+    placed = [
+        person.member_id
+        for person in ExternalPerson.objects.filter(connection=conn, member__isnull=False)
+        if _place_in_department(conn, person)
+    ]
+    _assign_now(conn.org_id, placed)
     counts["applied"] = apply_training_records(conn=conn)
     counts["to_review"] = ExternalPerson.objects.filter(
         connection=conn, mapping_status=ExternalPerson.Mapping.PENDING, is_leaver=False
@@ -376,10 +436,16 @@ def link_department(
     dept.unit, dept.status = unit, ExternalDepartment.Link.LINKED
     dept.save(update_fields=["unit", "status", "updated_at"])
     conn = dept.connection
-    for person in ExternalPerson.objects.filter(
-        connection=conn, member__isnull=False, department_external_id=dept.external_department_id
-    ):
-        _place_in_department(conn, person)
+    placed = [
+        person
+        for person in ExternalPerson.objects.filter(
+            connection=conn, member__isnull=False, department_external_id=dept.external_department_id
+        )
+        if _place_in_department(conn, person)
+    ]
+    if placed:
+        _assign_now(conn.org_id, [p.member_id for p in placed])
+        apply_training_records(conn=conn, person_ids=[p.id for p in placed])
     return dept
 
 
@@ -390,22 +456,25 @@ def unlink_department(*, dept: ExternalDepartment) -> ExternalDepartment:
     return dept
 
 
-def _place_in_department(conn: HrConnection, person: ExternalPerson) -> None:
+def _place_in_department(conn: HrConnection, person: ExternalPerson) -> bool:
     """Matched people join their Breathe department's unit; their Breathe line manager
-    becomes a manager of it. Add only: nothing set by hand is ever removed."""
+    becomes a manager of it. Add only: nothing set by hand is ever removed. True when
+    the person was added to a unit."""
     if not person.member_id or not person.department_external_id:
-        return
+        return False
     dept = ExternalDepartment.objects.filter(
         connection=conn, external_department_id=person.department_external_id, unit__isnull=False,
         unit__archived_at__isnull=True,
     ).select_related("unit").first()  # fmt: skip
     if dept is None:
-        return
+        return False
     member = OrgMember.objects.filter(pk=person.member_id, removed_at__isnull=True).first()
     if member is None:
-        return
+        return False
+    placed = False
     if conn.has("departments") and not member.unit_links.filter(unit=dept.unit).exists():
         org_services.add_member_to_unit(member=member, unit=dept.unit)
+        placed = True
     if conn.has("managers") and person.manager_external_id:
         boss = ExternalPerson.objects.filter(
             connection=conn, external_employee_id=person.manager_external_id, member__isnull=False,
@@ -414,6 +483,16 @@ def _place_in_department(conn: HrConnection, person: ExternalPerson) -> None:
         if boss and not UnitManager.objects.filter(unit=dept.unit, member=boss.member).exists():
             current = list(OrgMember.objects.filter(managed_units__unit=dept.unit))
             org_services.set_unit_managers(unit=dept.unit, members=[*current, boss.member])
+    return placed
+
+
+def _assign_now(org_id, member_ids) -> None:
+    """Compliance normally assigns training after commit (org.signals.structure_changed).
+    Do it now for these people, so their Breathe records can count in this transaction."""
+    member_ids = [m for m in member_ids if m]
+    if member_ids:
+        engine.lock_org(org_id)
+        engine.sync_assignments(org_id, member_ids=member_ids)
 
 
 # ---------------------------------------------------------------- people
@@ -442,6 +521,7 @@ def match_person(*, person: ExternalPerson, member: OrgMember) -> ExternalPerson
     if changed:
         member.save(update_fields=[*changed, "updated_at"])
     _place_in_department(person.connection, person)
+    _assign_now(person.org_id, [member.id])
     apply_training_records(conn=person.connection, person_ids=[person.id])
     return person
 
@@ -457,6 +537,7 @@ def invite_person(
             connection=person.connection,
             external_department_id=person.department_external_id,
             unit__isnull=False,
+            unit__archived_at__isnull=True,
         ).first()
         unit = dept.unit if dept else None
     inv, token = org_services.invite(
@@ -509,6 +590,7 @@ def reconcile_members(*, org_id, member_ids) -> int:
             if not member.employee_ref:
                 OrgMember.objects.filter(pk=member.pk).update(employee_ref=person.external_employee_id[:64])
             _place_in_department(person.connection, person)
+            _assign_now(org_id, [member.id])
             apply_training_records(conn=person.connection, person_ids=[person.id])
         done += 1
     return done
@@ -535,6 +617,7 @@ def map_training(*, conn: HrConnection, title: str, requirement: Requirement | N
     return apply_training_records(conn=conn)
 
 
+@transaction.atomic
 def apply_training_records(*, conn: HrConnection, person_ids=None) -> int:
     """Turn completed Breathe training into compliance completion records (source
     "import"), for linked people whose requirement applies to them. The record expires
@@ -544,6 +627,9 @@ def apply_training_records(*, conn: HrConnection, person_ids=None) -> int:
     maps = dict(HrTrainingMap.objects.filter(connection=conn).values_list("title_key", "requirement_id"))
     if not maps:
         return 0
+    # the company's compliance lock BEFORE reading unapplied rows: a sync, a map and a match
+    # running together take turns, so a record is never imported twice
+    engine.lock_org(conn.org_id)
     qs = ExternalTrainingRecord.objects.filter(
         connection=conn, applied_record__isnull=True, title_key__in=list(maps), completion_date__isnull=False,
         person__member__isnull=False, person__member__removed_at__isnull=True,
@@ -582,7 +668,6 @@ def apply_training_records(*, conn: HrConnection, person_ids=None) -> int:
         members.add(status.member_id)
         applied += 1
     if members:
-        engine.lock_org(conn.org_id)
         engine.recompute(conn.org_id, member_ids=list(members))
         engine.open_renewals(conn.org_id, member_ids=list(members))
     return applied

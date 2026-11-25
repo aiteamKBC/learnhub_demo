@@ -1,5 +1,5 @@
 import { Package, Pencil, Plus, Search, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,8 @@ import {
   useTokenCourses,
   useUpdatePackage,
 } from '@/features/b2c/console'
+import { ConfirmDialog, LoadMore } from '@/features/console/ui'
+import { useDebounced } from '@/features/org/ui'
 
 type Pkg = NonNullable<ReturnType<typeof useAdminPackages>['data']>[number]
 
@@ -31,6 +33,7 @@ export function AdminPackagesPage() {
   const reactivate = useUpdatePackage()
   const [edit, setEdit] = useState<Pkg | null>(null)
   const [open, setOpen] = useState(false)
+  const [deactivating, setDeactivating] = useState<Pkg | null>(null)
 
   const start = (p: Pkg | null) => { setEdit(p); setOpen(true) }
 
@@ -81,11 +84,11 @@ export function AdminPackagesPage() {
                         <div className="flex justify-end gap-2">
                           <Button size="sm" variant="secondary" onClick={() => start(p)}><Pencil /> Edit</Button>
                           {p.is_active ? (
-                            <Button size="sm" variant="ghost" loading={del.isPending} onClick={() => del.mutate(p.id, { onSuccess: () => toast.success('Package deactivated.'), onError: (e) => toast.error((e as Error).message) })}>
+                            <Button size="sm" variant="ghost" onClick={() => setDeactivating(p)}>
                               <Trash2 /> Deactivate
                             </Button>
                           ) : (
-                            <Button size="sm" variant="ghost" loading={reactivate.isPending} onClick={() => reactivate.mutate({ packageId: p.id, body: { is_active: true } }, { onSuccess: () => toast.success('Package reactivated.'), onError: (e) => toast.error((e as Error).message) })}>
+                            <Button size="sm" variant="ghost" loading={reactivate.isPending && reactivate.variables?.packageId === p.id} onClick={() => reactivate.mutate({ packageId: p.id, body: { is_active: true } }, { onSuccess: () => toast.success('Package reactivated.'), onError: (e) => toast.error((e as Error).message) })}>
                               Reactivate
                             </Button>
                           )}
@@ -100,6 +103,15 @@ export function AdminPackagesPage() {
         )}
       </Card>
       <PackageDialog open={open} onOpenChange={setOpen} pkg={edit} />
+      <ConfirmDialog
+        open={!!deactivating}
+        onOpenChange={(o) => !o && setDeactivating(null)}
+        title={`Deactivate "${deactivating?.name}"?`}
+        body="Learners can no longer buy it. People who already bought it keep their courses. You can reactivate it later."
+        confirmLabel="Deactivate"
+        loading={del.isPending}
+        onConfirm={() => deactivating && del.mutate(deactivating.id, { onSuccess: () => (toast.success('Package deactivated.'), setDeactivating(null)), onError: (e) => toast.error((e as Error).message) })}
+      />
     </div>
   )
 }
@@ -118,7 +130,8 @@ function PackageDialog({ open, onOpenChange, pkg }: { open: boolean; onOpenChang
 function PackageForm({ pkg, onDone }: { pkg: Pkg | null; onDone: () => void }) {
   const tiers = usePriceTiers()
   const [search, setSearch] = useState('')
-  const courses = useTokenCourses(search)
+  const courses = useTokenCourses(useDebounced(search.trim(), 300))
+  const rows = courses.data?.pages.flatMap((p) => p.items) ?? []
   const create = useCreatePackage()
   const update = useUpdatePackage()
 
@@ -127,10 +140,13 @@ function PackageForm({ pkg, onDone }: { pkg: Pkg | null; onDone: () => void }) {
   const [tierId, setTierId] = useState(pkg?.price_tier_id ?? '')
   const [picked, setPicked] = useState<Set<string>>(new Set(pkg?.courses.map((c) => c.id) ?? []))
 
-  // Keep already-picked courses visible even when they are not in the current search page.
-  const pickedTitles = useMemo(() => new Map(pkg?.courses.map((c) => [c.id, c.title]) ?? []), [pkg])
+  // Keep picked courses visible (with their titles) even when the search no longer finds them.
+  const [pickedTitles, setPickedTitles] = useState(() => new Map(pkg?.courses.map((c) => [c.id, c.title]) ?? []))
 
-  const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const toggle = (id: string, title?: string) => {
+    if (title) setPickedTitles((m) => new Map(m).set(id, title))
+    setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
 
   const valid = name.trim().length >= 2 && tierId && picked.size > 0
   const saving = create.isPending || update.isPending
@@ -172,18 +188,21 @@ function PackageForm({ pkg, onDone }: { pkg: Pkg | null; onDone: () => void }) {
         <div className="max-h-56 overflow-y-auto rounded-lg border border-border">
           {courses.isLoading ? (
             <Skeleton className="m-3 h-32 rounded-md" />
+          ) : courses.error ? (
+            <ErrorState message="We couldn't load courses." onRetry={() => void courses.refetch()} />
           ) : (
+            <>
             <ul className="divide-y divide-border">
-              {courses.data?.items.map((c) => (
+              {rows.map((c) => (
                 <li key={c.id}>
                   <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-surface-2">
-                    <Checkbox checked={picked.has(c.id)} onCheckedChange={() => toggle(c.id)} />
+                    <Checkbox checked={picked.has(c.id)} onCheckedChange={() => toggle(c.id, c.title)} />
                     <span>{c.title}</span>
                   </label>
                 </li>
               ))}
               {/* already-picked courses not in the current search results */}
-              {[...picked].filter((id) => !courses.data?.items.some((c) => c.id === id) && pickedTitles.has(id)).map((id) => (
+              {[...picked].filter((id) => !rows.some((c) => c.id === id) && pickedTitles.has(id)).map((id) => (
                 <li key={id}>
                   <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-surface-2">
                     <Checkbox checked onCheckedChange={() => toggle(id)} />
@@ -192,6 +211,8 @@ function PackageForm({ pkg, onDone }: { pkg: Pkg | null; onDone: () => void }) {
                 </li>
               ))}
             </ul>
+            {courses.hasNextPage ? <LoadMore shown={rows.length} noun="courses" hasMore loading={courses.isFetchingNextPage} onMore={() => void courses.fetchNextPage()} /> : null}
+            </>
           )}
         </div>
       </div>

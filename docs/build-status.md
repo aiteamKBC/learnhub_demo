@@ -2,6 +2,87 @@
 
 Maintained by Claude Code (`/status`) and read by the planner session. Newest milestone first.
 
+## Inclusion test (2026-11-25, user request)
+
+A learner questionnaire built from the client's `safeguarding-questions.json`: six sections of ten questions, each answered on a 0 to 3 scale. Admins edit it and read the results in the console. User decisions: results and the editor are for admins only; the test is optional and can be taken again; flag thresholds are edited by admins.
+
+- **Backend:** new app and schema `inclusion` (`apps/inclusion`, `core/migrations/0005_inclusion_schema.py`).
+  - Sections and questions are reference data, with RLS `reference`. Attempts have RLS `personal`: the learner or staff.
+  - Nothing links to a company, so an employer can never read answers. `lms_readonly` gets no grant on this schema, because any role can set the staff key itself.
+  - Each submitted attempt keeps a copy of the questions, answers and section scores. Flags are recomputed from the current thresholds whenever a threshold changes or a section is deleted.
+  - Advisory locks: one per learner, so a save and a submit never create two drafts; and one for flags, so threshold edits run one at a time and submissions wait for them.
+  - Learner endpoints: `GET /api/v1/inclusion/me`, `PUT /me/draft`, `POST /me/submit`.
+- **Console** (`apps/platform/console/inclusion.py`): `/console/inclusion/questions`, sections (create, edit, delete, reorder), questions (create, edit, delete, reorder), and `/console/inclusion/results` (keyset list with search, a flagged filter and a section filter, plus a detail view with earlier attempts).
+  - Admins only: superusers, or anyone holding `roles.manage`. Every edit and every opened result is written to the audit log.
+- **Frontend:**
+  - Learner page `/learn/inclusion` ("Inclusion test" in the My learning sidebar). A consent note comes first; questions go one section at a time and save as the learner goes; the thank-you screen offers "Take it again", which starts from the last answers.
+  - Console pages "Inclusion results" and "Inclusion questions" (new nav section "Learner support").
+  - New backdrop `spectrum`.
+- **Migrations:** `core 0005_inclusion_schema`, then `inclusion 0001_initial`, `0002_seed_questions` (insert-only) and `0003_security`.
+- **Review** (`reviewer` agent) found no access gap. Fixed: autosave racing with submit (server locks, and the page now queues saves and waits for them before sending); flags going stale when two admins edit at once; the read-only role's grant; the score bar's motion duration; the section state carrying over between attempts in the results; and the results filter not refreshing after a new section.
+  - Raised with the client rather than decided: keeping and deleting answers, the right to withdraw, and what happens after a flag (client questions #50 and #51).
+- **Company access (user decision, same day):**
+  - A company's owners and admins read their current members' latest answers in Business › People › Inclusion results (`/business/inclusion`), through `GET /api/v1/inclusion/company/results` and `/results/{id}`.
+  - The database enforces it: migration `inclusion 0004_company_admin_read` adds a SELECT-only policy that requires the caller to be an active owner or admin of the request's company, and the learner an active member. Managers, learners, other companies and removed members see nothing.
+  - The results view is shared with the console (`features/inclusion/ResultsView.tsx`, `scope` console or company). The learner's consent note now says company owners and admins can see the answers.
+  - Client question #52 asks the client to confirm.
+- **Checks:** all 8 inclusion tests pass, and the type check and production build pass. The main chunk is 147 kB, up from 143 kB because of the new backdrop and the sign-in switch.
+
+## Learner / organisation sign-in (2026-11-25, user request)
+
+- Header (logged out, desktop): a "For organisations" button opens `/login?as=org`.
+- `/login` and `/signup` have a Learner / Organisation switch (`pages/auth/AudienceSwitch.tsx`). The choice is in the URL (`?as=org`) and `next` is kept when switching.
+- Organisation mode only changes the wording and where you land. Log in goes to `/business` for someone who is an owner, admin or manager of a company (the guard sends companies still setting up to `/business/start`). Someone who manages no company, platform staff included, goes to `/business/start` to set one up, instead of being bounced to `/learn`. Sign-up goes to `/business/start`. An explicit `?next=` always wins. There is still one account system, and the backend is unchanged.
+- Known gap: a sign-up that needs email confirmation loses `?next=` (the link opens a new tab), so an organisation then lands on `/learn`. The "Set up your company" route is still reachable from there.
+- Also fixed: on `/courses`, the course-count skeleton was a `<div>` inside a `<p>` (a React console error).
+- Checked: type check passes. Screenshots of the header, the two log-in sides and organisation sign-up, in light and dark. Phone width 375 px with no horizontal scroll.
+
+## Finishing the "built, checks owed" milestones (2026-11-25, in progress)
+
+User request: finalise M4, M5, M6, B2C, B2B, M17 and M18–M22 (browser tests, phone checks, reviewer).
+- **Setup on this Linux machine:** hooks call `python3` (the guard works again); ruff, waitress, Playwright and
+  Chromium installed. The `e2e` Neon branch was **reset from dev** (user decision), so it is fully migrated.
+- **Harness:** always forces `MAIL_MODE=console` (serve.py, on_e2e.py, lib.js), so E2E never sends real email;
+  `lib.js` reads `E2E_DEMO_PASSWORD` from `backend/.env.e2e` if it isn't in the environment.
+- **Waiting on the user:** `backend/.env.e2e` (e2e URLs + demo password). E2E, phone checks and Lighthouse need it.
+- **Reviewer, M17:** a "signal receivers garbage-collected" finding was checked and is false (the real receivers
+  fire). Real findings (transactions held across Breathe calls, disconnect undone by a running sync, sync races,
+  manager seeing company-wide training records, training not imported at link time, archived units, untyped
+  counts) are being fixed with tests together with the missing M17 tests. Frontend fixed: People page leave badges
+  (one request per page, past 200 people), HR page offline crash, "Breathe" on the Units badge. New client
+  question #48 (Breathe line managers become company managers automatically).
+- **M17 tests now exist:** `apps/integrations/tests/` (client 17, secrets 5, sync 24, API 6): **52 tests OK**;
+  `test_api_contract` + `test_rls` OK; ruff clean. Review fixes done with tests: a sync reads Breathe with no
+  transaction open (claim, fetch, then write under a lock; request paths use an 8 s timeout and one retry); a
+  paused or disconnected connection's runs are cancelled ("failed", code `cancelled`, nobody notified) and never
+  reopen the connection; one claim per run and `select_for_update` before the busy check; training imports take
+  the org lock (never twice); managers see training records only for their own people; compliance is assigned at
+  link time so training counts at once; archived units are never used; `HrRunCountsOut` types the run counts
+  (types regenerated, the HR page's cast removed); case-insensitive email suggestions. Found by the tests: the
+  training title spelling could change between loads. **Not built:** the brief's sync "dry run" (needs a new
+  column). Still company-wide for managers: the overview counts and department people counts.
+- **Harness for M17:** `tools/harness/fake_breathe.py` (accepts `e2e-fake-breathe-key-0001` only) is installed in
+  `e2e_wsgi.py` and in the new worker entry `e2e_celery.py` (serve.py starts `celery -A e2e_celery`).
+- **Reviewer, whole frontend (M4–M6, B2C, B2B):** fixed 17 items, among them: console Approvals click did nothing
+  (two URL setters overwrote each other; new `usePatchParams`), "Tokens added" shown before payment, links to tabs
+  and params pages ignored, 11 routes without titles, hard-coded "30-day refund", destructive actions without
+  confirmation, stale learner caches after B2C admin changes, wrong access/grant/ledger codes, money formatting for
+  non-2-decimal currencies, lecture token unlock button on the course page, My learning capped at 24 courses, B2B
+  "Confirming payment" spinning after an old abandoned checkout, wording and reduced-motion scrolls. Main entry
+  142.9 → 143.3 kB (route titles). New client question #49 (the console's "2× fair price" token rule).
+
+## Local setup on Linux and dev migrations (2026-11-17)
+
+- **Every API call returned 500 locally.** `REDIS_URL` is set but no Redis ran on this machine. Redis now runs in
+  Docker (`learnhub-redis`, `redis:7.4-alpine`, bound to 127.0.0.1:6379, restarts with Docker).
+- **Dev was 27 migrations behind** (the M18–M22 set and `learning.0016`), so the course lists failed on
+  `commerce.program_offers`. With the user's OK, `migrate --database owner` ran on dev: all applied, none pending.
+- **Bug fixed: `identity.0006_staff_roles_seed_and_security` failed on any database that has staff users**
+  ("cannot ALTER TABLE staff_role_assignments because it has pending trigger events"): the seeded assignments
+  left deferred foreign-key checks queued before RLS was switched on. Tests never saw it (no staff exist at
+  migration time). Fix: `SET CONSTRAINTS ALL IMMEDIATE` between the seed and the RLS steps; the result is unchanged.
+  The e2e branch and production need this fix before they migrate.
+
 ## Programs v1: cross-milestone review and fixes (2026-11-17, part of the long-tests box)
 
 The `reviewer` read all Programs work (M18 to M23) for problems that only show up across milestones. Fixed:

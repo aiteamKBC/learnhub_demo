@@ -328,7 +328,7 @@ function Detail({ unit, units, admin, onAction }: { unit: Unit; units: Unit[]; a
               <div className="mt-1.5 flex flex-wrap gap-1">
                 {linkedDepts.map((d) => (
                   <Badge key={d.id} tone="info" title={`People in this Breathe HR department are placed here`}>
-                    <Plug className="size-3" /> {d.name}
+                    <Plug className="size-3" /> Breathe · {d.name}
                   </Badge>
                 ))}
               </div>

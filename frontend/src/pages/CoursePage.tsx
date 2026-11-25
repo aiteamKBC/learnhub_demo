@@ -22,6 +22,7 @@ import { ProgramBuy, ProgramIntakes } from '@/features/catalog/ProgramBuy'
 import { TeamBuy } from '@/features/corporate/TeamBuy'
 import { ReportButton } from '@/features/engagement/ReportButton'
 import { useMe } from '@/features/identity/auth'
+import { usePublicSettings } from '@/features/platform/api'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/lib/currency'
 import { count, duration, relativeDate, shortDate } from '@/lib/format'
@@ -35,7 +36,7 @@ const ACCESS_SOURCE_LABEL: Record<string, string> = {
   cash_package: 'Included in a package you bought',
   full_course_token_unlock: 'Unlocked with tokens',
   subscription: 'Included in your subscription',
-  admin_grant: 'Granted by LearnHub',
+  admin_grant: 'Granted by our team',
 }
 /** Sources that give the whole course and so open the player (mirrors unlock.FULL_ACCESS_SOURCES). */
 const FULL_ACCESS_SOURCES = ['full_course_token_unlock', 'cash_package', 'admin_grant']
@@ -44,7 +45,13 @@ type Detail = NonNullable<ReturnType<typeof useCourse>['data']>
 
 /** Short courses list sections and lectures; programs (M18) show modules, their weeks and
  * components. Weeks arrive in one global order, module by module. */
-function Curriculum({ sections, modules, onPreview }: { sections: Detail['sections']; modules?: Detail['modules']; onPreview: (l: { key: string; title: string }) => void }) {
+function Curriculum({ courseId, viewer, sections, modules, onPreview }: { courseId: string; viewer: Detail['viewer']; sections: Detail['sections']; modules?: Detail['modules']; onPreview: (l: { key: string; title: string }) => void }) {
+  const { data: me } = useMe()
+  // Single lectures are sold here (not in the player). Offer the unlock only to a signed-in
+  // learner who doesn't already have the whole course (same query as the buy box: one request).
+  const eligible = !!me && !viewer.enrollment_id && !viewer.is_instructor && !viewer.plan_access
+  const courseAccess = useAccess('course', courseId, eligible)
+  const lectureUnlock = eligible && courseAccess.isSuccess && !courseAccess.data.allowed
   const program = !!modules?.length
   const moduleNo = new Map((modules ?? []).map((m, i) => [m.id, { n: i + 1, title: m.title }]))
   const [open, setOpen] = useState<Set<string>>(() => new Set(sections.slice(0, 1).map((s) => s.id)))
@@ -101,20 +108,24 @@ function Curriculum({ sections, modules, onPreview }: { sections: Detail['sectio
                   {s.lectures.map((l) => {
                     const Icon = kindIcon[l.kind] ?? FileText
                     return (
-                      <li key={l.key} className="flex items-center gap-3 px-4 py-3 pl-11 text-sm">
+                      <li key={l.key} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 pl-11 text-sm">
                         <Icon className="size-4 shrink-0 text-subtle" />
                         {l.is_preview && l.kind === 'video' ? (
                           <button type="button" onClick={() => onPreview({ key: l.key, title: l.title })} className="flex-1 text-left font-medium text-primary hover:underline">
                             {l.title}
                           </button>
                         ) : (
-                          <span className="flex-1">{l.title}</span>
+                          <span className="min-w-0 flex-1">{l.title}</span>
                         )}
                         {l.is_preview ? <Badge tone="primary">Preview</Badge> : null}
                         {!l.is_preview && l.token_price ? (
-                          <Badge tone="neutral" title="Unlock this lecture with tokens">
-                            <Coins /> {count(l.token_price)}
-                          </Badge>
+                          lectureUnlock ? (
+                            <UnlockButton scope="lecture" targetId={l.id} tokenPrice={l.token_price} title={l.title} size="sm" skeletonClassName="h-8 w-32 rounded-md" />
+                          ) : (
+                            <Badge tone="neutral" title="Unlock this lecture with tokens">
+                              <Coins /> {count(l.token_price)}
+                            </Badge>
+                          )
                         ) : null}
                         {l.duration_sec ? <span className="w-12 text-right text-xs text-muted tabular">{duration(l.duration_sec)}</span> : <span className="w-12" />}
                       </li>
@@ -238,6 +249,7 @@ function PreviewDialog({ slug, lecture, onClose }: { slug: string; lecture: { ke
 
 function BuyBox({ course, onPreview }: { course: Detail; onPreview?: () => void }) {
   const { data: me } = useMe()
+  const refundDays = usePublicSettings().settings['payments.refund_window_days']
   const navigate = useNavigate()
   const location = useLocation()
   const { code } = useCurrency()
@@ -352,7 +364,7 @@ function BuyBox({ course, onPreview }: { course: Detail; onPreview?: () => void 
             <Button size="lg" variant="soft" className="mt-2 w-full" loading={checkout.isPending} onClick={() => (me ? buyNow() : needLogin())}>
               Buy now
             </Button>
-            <p className="mt-3 text-center text-xs text-muted">30-day refund policy · secure checkout by Stripe</p>
+            <p className="mt-3 text-center text-xs text-muted">{refundDays}-day refund policy · secure checkout by Stripe</p>
             {tokenCoursePrice ? (
               <div className="mt-4 border-t border-border pt-4">
                 <p className="mb-2 text-xs font-medium text-muted">Or unlock the whole course with tokens</p>
@@ -484,7 +496,7 @@ export function CoursePage() {
               </ul>
             </section>
           ) : null}
-          <Curriculum sections={c.sections} modules={c.kind === 'program' ? c.modules : undefined} onPreview={setPreview} />
+          <Curriculum courseId={c.id} viewer={c.viewer} sections={c.sections} modules={c.kind === 'program' ? c.modules : undefined} onPreview={setPreview} />
           {c.kind === 'program' && c.offers.some((o) => o.mode === 'live') ? <ProgramIntakes intakes={c.intakes} /> : null}
           <section aria-labelledby="about">
             <h2 id="about" className="text-xl font-semibold tracking-tight">About this course</h2>

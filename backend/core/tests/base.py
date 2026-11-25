@@ -21,6 +21,7 @@ TRUNCATE_SCHEMAS = [
     "engagement",
     "platform",
     "integrations",
+    "inclusion",
 ]
 # Reference data loaded by migrations survives between tests
 KEEP = {

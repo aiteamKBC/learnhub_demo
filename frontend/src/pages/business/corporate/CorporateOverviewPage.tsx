@@ -145,7 +145,7 @@ export function CorporateOverviewPage() {
         actions={
           <>
             <Button asChild variant="secondary">
-              <Link to="/business/live-bookings">Live training</Link>
+              <Link to="/business/live-bookings">Short-course live training</Link>
             </Button>
             <Button asChild variant="secondary">
               <Link to="/support"><LifeBuoy /> B2B support</Link>

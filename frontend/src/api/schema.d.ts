@@ -3358,6 +3358,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inclusion/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Me */
+        get: operations["apps_inclusion_api_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inclusion/me/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Draft */
+        put: operations["apps_inclusion_api_save_draft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inclusion/me/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit */
+        post: operations["apps_inclusion_api_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inclusion/company/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Company Results */
+        get: operations["apps_inclusion_api_company_results"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inclusion/company/results/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Company Result */
+        get: operations["apps_inclusion_api_company_result"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/studio/instructor-profile": {
         parameters: {
             query?: never;
@@ -6480,6 +6565,161 @@ export interface paths {
          * @description Background machinery and outside services: anything stuck or failing shows up here.
          */
         get: operations["apps_platform_console_dashboard_health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inclusion Editor */
+        get: operations["apps_platform_console_inclusion_inclusion_editor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inclusion Create Section */
+        post: operations["apps_platform_console_inclusion_inclusion_create_section"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/sections/{section_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Inclusion Delete Section */
+        delete: operations["apps_platform_console_inclusion_inclusion_delete_section"];
+        options?: never;
+        head?: never;
+        /** Inclusion Update Section */
+        patch: operations["apps_platform_console_inclusion_inclusion_update_section"];
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/sections-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Inclusion Order Sections */
+        put: operations["apps_platform_console_inclusion_inclusion_order_sections"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/sections/{section_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inclusion Create Question */
+        post: operations["apps_platform_console_inclusion_inclusion_create_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/questions/{question_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Inclusion Delete Question */
+        delete: operations["apps_platform_console_inclusion_inclusion_delete_question"];
+        options?: never;
+        head?: never;
+        /** Inclusion Update Question */
+        patch: operations["apps_platform_console_inclusion_inclusion_update_question"];
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/sections/{section_id}/questions-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Inclusion Order Questions */
+        put: operations["apps_platform_console_inclusion_inclusion_order_questions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inclusion Results */
+        get: operations["apps_platform_console_inclusion_inclusion_results"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/console/inclusion/results/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inclusion Result */
+        get: operations["apps_platform_console_inclusion_inclusion_result"];
         put?: never;
         post?: never;
         delete?: never;
@@ -14039,6 +14279,52 @@ export interface components {
             counts: components["schemas"]["HrCountsOut"] | null;
             latest_run: components["schemas"]["HrRunOut"] | null;
         };
+        /**
+         * HrRunCountsOut
+         * @description What one sync read and changed (all zero until a run completes).
+         */
+        HrRunCountsOut: {
+            /**
+             * People
+             * @default 0
+             */
+            people: number;
+            /**
+             * New People
+             * @default 0
+             */
+            new_people: number;
+            /**
+             * Leavers
+             * @default 0
+             */
+            leavers: number;
+            /**
+             * Departments
+             * @default 0
+             */
+            departments: number;
+            /**
+             * Training
+             * @default 0
+             */
+            training: number;
+            /**
+             * Applied
+             * @default 0
+             */
+            applied: number;
+            /**
+             * Leave
+             * @default 0
+             */
+            leave: number;
+            /**
+             * To Review
+             * @default 0
+             */
+            to_review: number;
+        };
         /** HrRunOut */
         HrRunOut: {
             /**
@@ -14050,10 +14336,7 @@ export interface components {
             status: string;
             /** Trigger */
             trigger: string;
-            /** Counts */
-            counts: {
-                [key: string]: unknown;
-            };
+            counts: components["schemas"]["HrRunCountsOut"];
             /** Error Message */
             error_message: string;
             /** Triggered By */
@@ -14302,6 +14585,238 @@ export interface components {
              */
             is_leaver: boolean;
             leave?: components["schemas"]["HrLeaveOut"] | null;
+        };
+        /** InclusionMeOut */
+        InclusionMeOut: {
+            /** Sections */
+            sections: components["schemas"]["InclusionSectionOut"][];
+            /** Answers */
+            answers: {
+                [key: string]: number;
+            };
+            /** Has Draft */
+            has_draft: boolean;
+            /** Consented */
+            consented: boolean;
+            /** Last Submitted At */
+            last_submitted_at: string | null;
+            /** Attempts */
+            attempts: number;
+        };
+        /** InclusionOptionOut */
+        InclusionOptionOut: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /** InclusionQuestionOut */
+        InclusionQuestionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Text */
+            text: string;
+            /** Required */
+            required: boolean;
+            /** Options */
+            options: components["schemas"]["InclusionOptionOut"][];
+        };
+        /** InclusionSectionOut */
+        InclusionSectionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Questions */
+            questions: components["schemas"]["InclusionQuestionOut"][];
+        };
+        /** InclusionSavedOut */
+        InclusionSavedOut: {
+            /** Ok */
+            ok: boolean;
+            /**
+             * Saved At
+             * Format: date-time
+             */
+            saved_at: string;
+        };
+        /** InclusionAnswersIn */
+        InclusionAnswersIn: {
+            /** Answers */
+            answers?: {
+                [key: string]: number | null;
+            };
+            /**
+             * Consent
+             * @default false
+             */
+            consent: boolean;
+        };
+        /** InclusionSubmittedOut */
+        InclusionSubmittedOut: {
+            /** Ok */
+            ok: boolean;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+        };
+        /** InclusionResultOut */
+        InclusionResultOut: {
+            /**
+             * Attempt Id
+             * Format: uuid
+             */
+            attempt_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+            /** Flag Count */
+            flag_count: number;
+            /** Scores */
+            scores: components["schemas"]["InclusionScoreOut"][];
+        };
+        /** InclusionResultsOut */
+        InclusionResultsOut: {
+            /** Items */
+            items: components["schemas"]["InclusionResultOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            summary: components["schemas"]["InclusionSummaryOut"];
+            /** Sections */
+            sections: components["schemas"]["InclusionSectionRefOut"][];
+        };
+        /** InclusionScoreOut */
+        InclusionScoreOut: {
+            /** Section Id */
+            section_id: string;
+            /** Title */
+            title: string;
+            /** Score */
+            score: number;
+            /** Max */
+            max: number;
+            /** Threshold */
+            threshold: number | null;
+            /** Flagged */
+            flagged: boolean;
+        };
+        /** InclusionSectionRefOut */
+        InclusionSectionRefOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /** InclusionSummaryOut */
+        InclusionSummaryOut: {
+            /** Learners */
+            learners: number;
+            /** Flagged */
+            flagged: number;
+        };
+        /** InclusionAnswerGroupOut */
+        InclusionAnswerGroupOut: {
+            /** Section Id */
+            section_id: string;
+            /** Title */
+            title: string;
+            /** Score */
+            score: number;
+            /** Max */
+            max: number;
+            /** Threshold */
+            threshold: number | null;
+            /** Flagged */
+            flagged: boolean;
+            /** Answers */
+            answers: components["schemas"]["InclusionAnswerOut"][];
+        };
+        /** InclusionAnswerOut */
+        InclusionAnswerOut: {
+            /** Key */
+            key: string;
+            /** Text */
+            text: string;
+            /** Value */
+            value: number;
+            /** Label */
+            label: string;
+            /** Max */
+            max: number;
+        };
+        /** InclusionDetailOut */
+        InclusionDetailOut: {
+            /**
+             * Attempt Id
+             * Format: uuid
+             */
+            attempt_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Email */
+            email: string;
+            /**
+             * Consented At
+             * Format: date-time
+             */
+            consented_at: string;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+            /** Is Latest */
+            is_latest: boolean;
+            /** Flag Count */
+            flag_count: number;
+            /** Groups */
+            groups: components["schemas"]["InclusionAnswerGroupOut"][];
+            /** History */
+            history: components["schemas"]["InclusionHistoryOut"][];
+        };
+        /** InclusionHistoryOut */
+        InclusionHistoryOut: {
+            /**
+             * Attempt Id
+             * Format: uuid
+             */
+            attempt_id: string;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+            /** Flag Count */
+            flag_count: number;
         };
         /** StudioStatusOut */
         StudioStatusOut: {
@@ -18858,6 +19373,87 @@ export interface components {
             type: string;
             /** Error */
             error: string;
+        };
+        /** ConsoleInclusionEditorOut */
+        ConsoleInclusionEditorOut: {
+            /** Sections */
+            sections: components["schemas"]["ConsoleInclusionSectionOut"][];
+            /** Default Options */
+            default_options: components["schemas"]["ConsoleInclusionOptionSchema"][];
+        };
+        /** ConsoleInclusionOptionSchema */
+        ConsoleInclusionOptionSchema: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /** ConsoleInclusionQuestionOut */
+        ConsoleInclusionQuestionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key */
+            key: string;
+            /** Text */
+            text: string;
+            /** Options */
+            options: components["schemas"]["ConsoleInclusionOptionSchema"][];
+            /** Required */
+            required: boolean;
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** ConsoleInclusionSectionOut */
+        ConsoleInclusionSectionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Flag Threshold */
+            flag_threshold: number | null;
+            /** Is Active */
+            is_active: boolean;
+            /** Max Score */
+            max_score: number;
+            /** Questions */
+            questions: components["schemas"]["ConsoleInclusionQuestionOut"][];
+        };
+        /** ConsoleInclusionSectionIn */
+        ConsoleInclusionSectionIn: {
+            /** Title */
+            title?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Flag Threshold */
+            flag_threshold?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
+        /** ConsoleInclusionOrderIn */
+        ConsoleInclusionOrderIn: {
+            /** Ids */
+            ids: string[];
+        };
+        /** ConsoleInclusionQuestionIn */
+        ConsoleInclusionQuestionIn: {
+            /** Text */
+            text?: string | null;
+            /** Options */
+            options?: components["schemas"]["ConsoleInclusionOptionSchema"][] | null;
+            /** Required */
+            required?: boolean | null;
+            /** Is Active */
+            is_active?: boolean | null;
         };
         /** ConsoleModSummaryOut */
         ConsoleModSummaryOut: {
@@ -27883,6 +28479,122 @@ export interface operations {
             };
         };
     };
+    apps_inclusion_api_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InclusionMeOut"];
+                };
+            };
+        };
+    };
+    apps_inclusion_api_save_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InclusionAnswersIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InclusionSavedOut"];
+                };
+            };
+        };
+    };
+    apps_inclusion_api_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InclusionAnswersIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InclusionSubmittedOut"];
+                };
+            };
+        };
+    };
+    apps_inclusion_api_company_results: {
+        parameters: {
+            query?: {
+                q?: string;
+                flagged?: boolean | null;
+                section?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InclusionResultsOut"];
+                };
+            };
+        };
+    };
+    apps_inclusion_api_company_result: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InclusionDetailOut"];
+                };
+            };
+        };
+    };
     apps_catalog_studio_apply_as_instructor: {
         parameters: {
             query?: never;
@@ -32701,6 +33413,270 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConsoleHealthOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_editor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleInclusionEditorOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_create_section: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleInclusionSectionIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_delete_section: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_update_section: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleInclusionSectionIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_order_sections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleInclusionOrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_create_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleInclusionQuestionIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleIdOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_delete_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_update_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleInclusionQuestionIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_order_questions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsoleInclusionOrderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleOkOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_results: {
+        parameters: {
+            query?: {
+                q?: string;
+                flagged?: boolean | null;
+                section?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InclusionResultsOut"];
+                };
+            };
+        };
+    };
+    apps_platform_console_inclusion_inclusion_result: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InclusionDetailOut"];
                 };
             };
         };

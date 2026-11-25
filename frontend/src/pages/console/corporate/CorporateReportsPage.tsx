@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { AreaChart, BarList } from '@/features/console/charts'
 import { Toolbar, dateTime } from '@/features/console/money-ui'
-import { KpiCard, gbp, gbpShort } from '@/features/console/ui'
+import { ConfirmDialog, KpiCard, gbp, gbpShort } from '@/features/console/ui'
 import { useCnAttendance, useCnAttendanceAction, useCnOverview, useCnRankings, useCnRevenueSeries } from '@/features/corporate/console'
 import { QueryBlock } from '@/features/corporate/ui'
 
@@ -87,6 +87,7 @@ function AttendanceReview() {
   const [status, setStatus] = useState('unresolved')
   const q = useCnAttendance(status)
   const act = useCnAttendanceAction()
+  const [rejecting, setRejecting] = useState<{ id: string; name: string } | null>(null)
   return (
     <Card>
       <CardHeader title="Attendance" description="Check sessions where we could not be sure who joined." />
@@ -130,7 +131,7 @@ function AttendanceReview() {
                         <Button size="sm" variant="soft" onClick={() => act.mutate({ id: a.id, action: 'verify' }, { onSuccess: () => toast.success('Attendance confirmed'), onError: err })}>
                           Confirm
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => act.mutate({ id: a.id, action: 'reject' }, { onSuccess: () => toast.success('Attendance rejected'), onError: err })}>
+                        <Button size="sm" variant="ghost" onClick={() => setRejecting({ id: a.id, name: a.user_name || a.user_email })}>
                           Reject
                         </Button>
                       </>
@@ -144,6 +145,15 @@ function AttendanceReview() {
           </Table>
         )}
       </QueryBlock>
+      <ConfirmDialog
+        open={!!rejecting}
+        onOpenChange={(o) => !o && setRejecting(null)}
+        title="Reject this attendance?"
+        body={<>The time is not counted for {rejecting?.name ?? 'this person'}.</>}
+        confirmLabel="Reject"
+        loading={act.isPending}
+        onConfirm={() => rejecting && act.mutate({ id: rejecting.id, action: 'reject' }, { onSuccess: () => (toast.success('Attendance rejected'), setRejecting(null)), onError: err })}
+      />
     </Card>
   )
 }

@@ -7,6 +7,10 @@ Safety rules, all enforced here:
 - a client-side rate limit (Breathe allows about 60 requests a minute) and capped
   retries on 429 / 5xx, honouring Retry-After.
 
+Request paths (connect, check, replace key) use `BreatheClient.for_request(...)`: short
+timeouts, one retry and a 5 s wait cap, so a slow Breathe never holds a web request (and
+its database transaction) near lms_app's 30 s idle-in-transaction limit.
+
 `transport` lets tests and the E2E harness inject an httpx.MockTransport (the pattern
 of core/storage.py); production leaves it None.
 """
@@ -74,7 +78,16 @@ def validated_base_url(value: str) -> str:
 
 class BreatheClient:
     def __init__(
-        self, base_url: str, api_key: str, *, sleep=time.sleep, max_requests: int = 40, window: float = 60
+        self,
+        base_url: str,
+        api_key: str,
+        *,
+        sleep=time.sleep,
+        max_requests: int = 40,
+        window: float = 60,
+        timeout: float = 30,
+        retries: int = 3,
+        max_wait: float = 60,
     ):
         self.base_url = validated_base_url(base_url)
         self.host = urlsplit(self.base_url).hostname
@@ -82,8 +95,15 @@ class BreatheClient:
         self.sleep = sleep
         self.max_requests = max_requests
         self.window = window
+        self.retries = retries
+        self.max_wait = max_wait
         self._sent: deque[float] = deque()
-        self._http = httpx.Client(follow_redirects=False, timeout=30, transport=transport)
+        self._http = httpx.Client(follow_redirects=False, timeout=timeout, transport=transport)
+
+    @classmethod
+    def for_request(cls, base_url: str, api_key: str, **kw) -> BreatheClient:
+        """Worst case about 8 + 5 + 8 s: well inside a web request's 30 s budget."""
+        return cls(base_url, api_key, **{"timeout": 8, "retries": 1, "max_wait": 5, **kw})
 
     def __enter__(self):
         return self
@@ -121,7 +141,8 @@ class BreatheClient:
                 "Breathe sent a link to another address; it was not followed.", code="bad_link"
             )
 
-    def get(self, path: str, *, params: dict | None = None, retries: int = 3) -> tuple[object, httpx.Headers]:
+    def get(self, path: str, *, params: dict | None = None) -> tuple[object, httpx.Headers]:
+        retries = self.retries
         if not self.api_key:
             raise BreatheError("No API key.", code="no_key")
         url = urljoin(self.base_url, path)
@@ -137,7 +158,7 @@ class BreatheClient:
                     raise BreatheError(
                         "Breathe could not be reached.", code="unreachable", retryable=True
                     ) from exc
-                self.sleep(2**attempt)
+                self.sleep(min(2**attempt, self.max_wait))
                 continue
             if r.is_redirect:
                 raise BreatheError(
@@ -157,7 +178,7 @@ class BreatheClient:
                     delay = float(r.headers.get("Retry-After") or 2**attempt)
                 except ValueError:
                     delay = 2**attempt
-                self.sleep(max(0.0, min(delay, 60.0)))
+                self.sleep(max(0.0, min(delay, self.max_wait)))
                 continue
             if r.status_code in (401, 403):
                 raise BreatheError(

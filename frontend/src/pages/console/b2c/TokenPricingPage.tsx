@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, CircleHelp, ClipboardCheck, Coins, Download, FileText, Gift, Info, Link, Pencil, Plus, Radio, Search, Trash2, Video, Wand2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, CircleHelp, ClipboardCheck, Coins, Download, EyeOff, FileText, Gift, Info, Link, Pencil, Plus, Radio, Search, Video, Wand2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -33,7 +33,11 @@ import {
   useUpdatePack,
   useUpsertTopUpPolicy,
 } from '@/features/b2c/console'
-import { dateTime } from '@/features/console/money-ui'
+import { useMoney } from '@/features/b2c/api'
+import { useCurrencies } from '@/features/commerce/api'
+import { dateTime, toMajor, toMinor } from '@/features/console/money-ui'
+import { ConfirmDialog, LoadMore } from '@/features/console/ui'
+import { useDebounced } from '@/features/org/ui'
 import { count } from '@/lib/format'
 
 /** Console > Token pricing. Packs, exchange rate, custom top-up policy, bonus campaigns and the
@@ -98,7 +102,8 @@ function computeFair(gbpMinor: number | undefined, tokensPerGbpMinor: number | u
 function CoursesTab() {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
-  const courses = useTokenCourses(search)
+  const courses = useTokenCourses(useDebounced(search.trim(), 300))
+  const rows = courses.data?.pages.flatMap((p) => p.items) ?? []
 
   if (selected) return <CourseEditor courseId={selected} onBack={() => setSelected(null)} />
 
@@ -114,9 +119,10 @@ function CoursesTab() {
           <Skeleton className="mt-4 h-48 rounded-lg" />
         ) : courses.error ? (
           <ErrorState message="We couldn't load courses." onRetry={() => void courses.refetch()} />
-        ) : !courses.data?.items.length ? (
+        ) : !rows.length ? (
           <EmptyState className="mt-4" icon={<Coins />} title="No courses found" body="Try a different search." />
         ) : (
+          <>
           <Table className="mt-4">
             <thead>
               <Tr>
@@ -128,7 +134,7 @@ function CoursesTab() {
               </Tr>
             </thead>
             <tbody>
-              {courses.data.items.map((c) => (
+              {rows.map((c) => (
                 <Tr key={c.id}>
                   <Td className="font-medium">{c.title}</Td>
                   <Td><Badge tone="neutral">{MODE_LABEL[c.token_pricing_mode] ?? c.token_pricing_mode}</Badge></Td>
@@ -141,6 +147,8 @@ function CoursesTab() {
               ))}
             </tbody>
           </Table>
+          <LoadMore shown={rows.length} noun="courses" hasMore={!!courses.hasNextPage} loading={courses.isFetchingNextPage} onMore={() => void courses.fetchNextPage()} />
+          </>
         )}
       </div>
     </Card>
@@ -450,7 +458,7 @@ function LecturesCard({ courseId: _courseId, detail, reason, needReason, fullPri
                   , ...l.materials.map((m) => (
                     <Tr key={m.id}>
                       <Td className="pl-9 text-sm text-muted"><span className="inline-flex items-center gap-2"><Download className="size-3.5" />{m.title}</span><span className="ml-2 text-xs">Attached material</span></Td>
-                      <Td className="w-40"><Input type="number" min="0" aria-label={`Token price for ${m.title}`} value={drafts[m.id] ?? (m.token_price != null ? String(m.token_price) : '')} onChange={(e) => setDrafts((d) => ({ ...d, [m.id]: e.target.value }))} placeholder="â€”" /></Td>
+                      <Td className="w-40"><Input type="number" min="0" aria-label={`Token price for ${m.title}`} value={drafts[m.id] ?? (m.token_price != null ? String(m.token_price) : '')} onChange={(e) => setDrafts((d) => ({ ...d, [m.id]: e.target.value }))} placeholder="—" /></Td>
                       <Td className="w-24 text-right"><Button size="sm" variant="secondary" loading={patchMaterial.isPending} disabled={needReason || savingAll || !dirty.some((item) => item.id === m.id)} onClick={() => saveMaterial(m.id, m.token_price)}>Save</Button></Td>
                     </Tr>
                   ))]
@@ -469,6 +477,7 @@ function PacksTab() {
   const packs = useAdminPacks()
   const del = useDeletePack()
   const [edit, setEdit] = useState<PackBody & { id?: string }>()
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null)
 
   if (packs.isLoading) return <Skeleton className="h-48 rounded-lg" />
   if (packs.error) return <ErrorState message="We couldn't load packs." onRetry={() => void packs.refetch()} />
@@ -508,8 +517,8 @@ function PacksTab() {
                         onClose={() => {}}
                         trigger={<Button size="icon-sm" variant="ghost" aria-label="Edit pack"><Pencil /></Button>}
                       />
-                      <Button size="icon-sm" variant="ghost" aria-label="Delete pack" onClick={() => del.mutate(p.id, { onSuccess: () => toast.success('Pack removed'), onError: (e) => toast.error((e as Error).message) })}>
-                        <Trash2 />
+                      <Button size="icon-sm" variant="ghost" aria-label={`Hide ${p.name}`} disabled={!p.is_active} onClick={() => setRemoving({ id: p.id, name: p.name })}>
+                        <EyeOff />
                       </Button>
                     </div>
                   </Td>
@@ -519,6 +528,15 @@ function PacksTab() {
           </Table>
         </div>
       )}
+      <ConfirmDialog
+        open={!!removing}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        title={`Hide "${removing?.name}"?`}
+        body="Learners can no longer buy this pack. Tokens already bought stay in their wallets. Edit the pack to show it again."
+        confirmLabel="Hide pack"
+        loading={del.isPending}
+        onConfirm={() => removing && del.mutate(removing.id, { onSuccess: () => (toast.success('Pack hidden'), setRemoving(null)), onError: (e) => toast.error((e as Error).message) })}
+      />
     </Card>
   )
 }
@@ -676,13 +694,17 @@ function TopUpTab() {
   const [maxDraft, setMaxDraft] = useState<string | null>(null)
   const [activeDraft, setActiveDraft] = useState<boolean | null>(null)
   const [reason, setReason] = useState('')
+  const fmt = useMoney()
+  const { data: currencies } = useCurrencies()
+  // people type amounts in the currency's main unit (pounds); the API stores minor units
+  const exponent = currencies?.find((c) => c.code === currency)?.exponent ?? 2
   const currentPolicy = policies.data?.find((p) => p.currency === currency)
-  const min = minDraft ?? (currentPolicy ? String(currentPolicy.min_minor) : '')
-  const max = maxDraft ?? (currentPolicy ? String(currentPolicy.max_minor) : '')
+  const min = minDraft ?? (currentPolicy ? toMajor(currentPolicy.min_minor, exponent) : '')
+  const max = maxDraft ?? (currentPolicy ? toMajor(currentPolicy.max_minor, exponent) : '')
   const active = activeDraft ?? currentPolicy?.is_active ?? true
-  const minN = parseInt(min, 10)
-  const maxN = parseInt(max, 10)
-  const valid = /^[A-Z]{3}$/.test(currency) && Number.isInteger(Number(min)) && minN > 0 && Number.isInteger(Number(max)) && maxN >= minN && reason.trim().length >= 3
+  const minN = toMinor(min, exponent) ?? 0
+  const maxN = toMinor(max, exponent) ?? 0
+  const valid = /^[A-Z]{3}$/.test(currency) && minN > 0 && maxN >= minN && reason.trim().length >= 3
 
   const submit = () => {
     if (!valid) return
@@ -704,9 +726,11 @@ function TopUpTab() {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
-        <CardHeader title="Top-up limits" description="Minimum and maximum custom top-up per currency (in minor units)." />
+        <CardHeader title="Top-up limits" description="The smallest and largest custom top-up a learner can pay in each currency." />
         {policies.isLoading ? (
           <Skeleton className="m-4 h-32 rounded-lg" />
+        ) : policies.error ? (
+          <ErrorState message="We couldn't load the top-up limits." onRetry={() => void policies.refetch()} />
         ) : !policies.data?.length ? (
           <EmptyState className="m-4" icon={<Info />} title="No policies configured" body="Without a policy, a currency has no custom-top-up limits." />
         ) : (
@@ -715,8 +739,8 @@ function TopUpTab() {
               <thead>
                 <Tr>
                   <Th>Currency</Th>
-                  <Th>Min (minor)</Th>
-                  <Th>Max (minor)</Th>
+                  <Th>Smallest top-up</Th>
+                  <Th>Largest top-up</Th>
                   <Th>Status</Th>
                 </Tr>
               </thead>
@@ -724,8 +748,8 @@ function TopUpTab() {
                 {policies.data.map((p) => (
                   <Tr key={p.id}>
                     <Td className="font-medium">{p.currency}</Td>
-                    <Td className="tabular-nums">{count(p.min_minor)}</Td>
-                    <Td className="tabular-nums">{count(p.max_minor)}</Td>
+                    <Td className="tabular-nums">{fmt(p.min_minor, p.currency)}</Td>
+                    <Td className="tabular-nums">{fmt(p.max_minor, p.currency)}</Td>
                     <Td>{p.is_active ? <Badge tone="success">Active</Badge> : <Badge tone="neutral">Off</Badge>}</Td>
                   </Tr>
                 ))}
@@ -739,8 +763,8 @@ function TopUpTab() {
         <div className="space-y-4 p-4">
           <Field label="Currency (ISO code)">{(p) => <Input {...p} value={currency} onChange={(e) => { setCurrency(e.target.value.toUpperCase()); setMinDraft(null); setMaxDraft(null); setActiveDraft(null) }} maxLength={3} />}</Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Min (minor)">{(p) => <Input {...p} type="number" min="1" value={min} onChange={(e) => setMinDraft(e.target.value)} />}</Field>
-            <Field label="Max (minor)">{(p) => <Input {...p} type="number" min="1" value={max} onChange={(e) => setMaxDraft(e.target.value)} />}</Field>
+            <Field label={`Smallest top-up (${currency || 'amount'})`}>{(p) => <Input {...p} inputMode="decimal" value={min} onChange={(e) => setMinDraft(e.target.value)} placeholder={exponent ? '5.00' : '500'} />}</Field>
+            <Field label={`Largest top-up (${currency || 'amount'})`}>{(p) => <Input {...p} inputMode="decimal" value={max} onChange={(e) => setMaxDraft(e.target.value)} placeholder={exponent ? '200.00' : '20000'} />}</Field>
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={active} onCheckedChange={(v) => setActiveDraft(v === true)} /> Active
@@ -756,6 +780,8 @@ function TopUpTab() {
 }
 
 // ------------------------------------------------------------------ bonus campaigns (activation backend-gated)
+const CONDITION_LABEL: Record<string, string> = { topup_min_amount: 'Top-up over an amount', first_topup: 'First top-up', pack_purchase: 'Buying a pack' }
+
 function BonusTab() {
   const campaigns = useAdminBonusCampaigns()
   const create = useCreateBonusCampaign()
@@ -830,7 +856,7 @@ function BonusTab() {
                 {campaigns.data.map((c) => (
                   <Tr key={c.id}>
                     <Td className="font-medium">{c.name}</Td>
-                    <Td className="capitalize">{c.condition_type}</Td>
+                    <Td>{CONDITION_LABEL[c.condition_type] ?? c.condition_type.replace(/_/g, ' ')}</Td>
                     <Td className="tabular-nums">{c.bonus_tokens ? `${count(c.bonus_tokens)} tokens` : c.bonus_percent ? `${c.bonus_percent}%` : '—'}</Td>
                     <Td className="whitespace-nowrap text-muted">
                       {dateTime(c.starts_at)} → {dateTime(c.ends_at)}

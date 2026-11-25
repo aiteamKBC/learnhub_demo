@@ -11,6 +11,7 @@ import { EmptyState, ErrorState } from '@/components/ui/misc'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useBillingPortal, useOrders, useRefund } from '@/features/commerce/api'
+import { usePublicSettings } from '@/features/platform/api'
 
 type Order = NonNullable<ReturnType<typeof useOrders>['data']>['pages'][number]['items'][number]
 import { money, shortDate } from '@/lib/format'
@@ -57,6 +58,7 @@ function Instalments({ plan, currency, exponent }: { plan: NonNullable<Order['in
 export function OrdersPage() {
   const { data, isLoading, error, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useOrders()
   const refund = useRefund()
+  const refundDays = usePublicSettings().settings['payments.refund_window_days']
   const [target, setTarget] = useState<{ id: string; title: string } | null>(null)
   const [reason, setReason] = useState('')
   const orders = data?.pages.flatMap((p) => p.items) ?? []
@@ -64,7 +66,7 @@ export function OrdersPage() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight sm:text-[26px]">Purchase history</h1>
-      <p className="mt-1 text-sm text-muted">Receipts for courses you bought. Refunds are possible within 30 days.</p>
+      <p className="mt-1 text-sm text-muted">Receipts for courses you bought. Refunds are possible within {refundDays} days.</p>
       {error ? (
         <ErrorState message={(error as Error).message} onRetry={() => void refetch()} />
       ) : isLoading ? (

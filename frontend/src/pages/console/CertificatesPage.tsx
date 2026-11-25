@@ -253,7 +253,8 @@ function Templates({ selected, onSelect, onEdit }: { selected: string; onSelect:
 
 // ---------------------------------------------------------------- issued table
 function Issued({ selected, onSelect, onRevoke, onExpiry }: { selected: string; onSelect: (c: IssuedCert) => void; onRevoke: (c: IssuedCert) => void; onExpiry: (c: IssuedCert) => void }) {
-  const [q, setQ] = useState('')
+  const [linked] = useParam('q') // search results link to ?q=<verification code>
+  const [q, setQ] = useState(linked)
   const [status, setStatus] = useState('')
   const term = useDebounced(q, 300)
   const list = useIssuedCerts({ q: term, status })

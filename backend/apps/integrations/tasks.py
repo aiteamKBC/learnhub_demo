@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 
 @shared_task(name="integrations.hr_sync_run")
 def hr_sync_run_task(org_id: str, run_id: str) -> str:
-    with tenant_context(org_id=org_id):
-        return services.process_sync(run_id).status
+    # process_sync opens its own short RLS transactions: none is held while Breathe answers
+    return services.process_sync(run_id, org_id=org_id).status
 
 
 @shared_task(name="integrations.hr_hourly")

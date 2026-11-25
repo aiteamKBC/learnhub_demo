@@ -5,6 +5,7 @@ import { Backdrop } from '@/components/art/backdrops'
 import { type NavSection, WorkspaceLayout } from '@/components/layout/WorkspaceLayout'
 import { corporateConsoleNav } from '@/features/corporate/routes'
 import { programsConsoleNav } from '@/features/programs/routes'
+import { inclusionConsoleNav } from '@/features/inclusion/routes'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Link } from '@/lib/router'
@@ -37,6 +38,7 @@ const consoleNav: NavSection[] = [
     ],
   },
   ...programsConsoleNav,
+  ...inclusionConsoleNav,
   {
     title: 'Money',
     items: [
@@ -50,7 +52,7 @@ const consoleNav: NavSection[] = [
     ],
   },
   {
-    title: 'Monetization',
+    title: 'Tokens and bundles',
     items: [
       { to: '/console/token-pricing', label: 'Token pricing', Icon: Coins },
       { to: '/console/wallets', label: 'Token wallets', Icon: WalletCards },

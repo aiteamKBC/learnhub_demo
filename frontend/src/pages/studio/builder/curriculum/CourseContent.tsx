@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from '@/components/ui/menu'
 import { LECTURE_KINDS, useCurriculum, type StudioCourse, type StudioLecture, type StudioModule, type StudioSection } from '@/features/studio/api'
 import { cn } from '@/lib/cn'
+import { reducedMotion } from '@/lib/motion'
 
 import { KIND_META, errText, kindMeta, moved, type LectureKind } from './shared'
 
@@ -171,7 +172,7 @@ export function CourseContent({ course, selectedId, highlight, onSelect, onAdd, 
   }
   const startModule = () => {
     setNewModule('')
-    window.setTimeout(() => newRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50)
+    window.setTimeout(() => newRef.current?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'nearest' }), 50)
   }
 
   const renderSection = (s: StudioSection, si: number) => {

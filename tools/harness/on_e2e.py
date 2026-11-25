@@ -40,7 +40,7 @@ def e2e_env() -> dict:
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit(__doc__)
-    env = {**os.environ, **e2e_env()}
+    env = {**os.environ, **e2e_env(), "MAIL_MODE": "console"}  # never real email
     sys.exit(
         subprocess.call([str(PY), "manage.py", *sys.argv[1:]], cwd=BACKEND, env=env)
     )

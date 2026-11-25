@@ -34,6 +34,7 @@ DOMAIN_APPS = [
     "apps.platform",
     "apps.corporate",
     "apps.integrations",  # M17: HR system (Breathe HR)
+    "apps.inclusion",  # inclusion test (learner self-report, admins see results)
 ]
 
 INSTALLED_APPS = [

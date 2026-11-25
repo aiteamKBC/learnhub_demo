@@ -54,6 +54,7 @@ export function DateRangeSelect({ value, onChange }: { value: RangeQuery; onChan
   const [custom, setCustom] = useState(false)
   const [start, setStart] = useState(value.start ?? '')
   const [end, setEnd] = useState(value.end ?? '')
+  const openCustom = () => (setStart(value.start ?? ''), setEnd(value.end ?? ''), setCustom(true))
   return (
     <>
       <div className="relative w-full sm:w-48">
@@ -64,7 +65,7 @@ export function DateRangeSelect({ value, onChange }: { value: RangeQuery; onChan
           value={value.range}
           onChange={(e) => {
             const r = e.target.value as RangeKey
-            if (r === 'custom') setCustom(true)
+            if (r === 'custom') openCustom()
             else onChange({ range: r })
           }}
         >
@@ -75,6 +76,12 @@ export function DateRangeSelect({ value, onChange }: { value: RangeQuery; onChan
           ))}
         </NativeSelect>
       </div>
+      {/* choosing "Custom" again fires no change, so custom dates get their own edit button */}
+      {value.range === 'custom' ? (
+        <Button variant="secondary" onClick={openCustom}>
+          Change dates
+        </Button>
+      ) : null}
       <Dialog open={custom} onOpenChange={setCustom}>
         <DialogContent title="Custom dates" description="Choose up to two years.">
           <form
@@ -140,12 +147,14 @@ const TONES: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral
 }
 
 const words = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+/** Codes whose plain spelling reads badly ("Trialing", "Canceled"). */
+const STATUS_WORDS: Record<string, string> = { progress: 'In progress', trialing: 'Free trial', canceled: 'Cancelled', partially_refunded: 'Partly refunded', past_due: 'Payment overdue' }
 
 /** A coloured status badge; pass `label` when the API's code is not the right words. */
 export function StatusPill({ status, label }: { status: string; label?: string }) {
   return (
     <Badge tone={TONES[status] ?? 'neutral'} dot>
-      {label ?? (status === 'progress' ? 'In progress' : words(status))}
+      {label ?? STATUS_WORDS[status] ?? words(status)}
     </Badge>
   )
 }
@@ -249,6 +258,25 @@ export function useTabParam<T extends string>(tabs: readonly T[], fallback: T): 
   return [tab, set]
 }
 
+/** Sets several query parameters in ONE update. Calling two param setters in the same
+ * handler loses the first change (each starts from the render-time params), so a handler
+ * that changes more than one key uses this. An empty value removes the key. */
+export function usePatchParams() {
+  const [, setParams] = useSearchParams()
+  return (patch: Record<string, string | null | undefined>) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [k, v] of Object.entries(patch)) {
+          if (v) next.set(k, v)
+          else next.delete(k)
+        }
+        return next
+      },
+      { replace: true },
+    )
+}
+
 /** One query parameter as state (e.g. ?user=<id> opens that person's panel). */
 export function useParam(name: string): [string, (v: string) => void] {
   const [params, setParams] = useSearchParams()
@@ -294,6 +322,8 @@ export function ExportButton({ path, filename, label = 'Export' }: { path: strin
         setBusy(true)
         try {
           await downloadCsv(path, filename)
+        } catch {
+          toast.error('The export failed. Check your connection and try again.')
         } finally {
           setBusy(false)
         }
