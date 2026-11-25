@@ -26,7 +26,7 @@ A learner questionnaire built from the client's `safeguarding-questions.json`: s
   - The database enforces it: migration `inclusion 0004_company_admin_read` adds a SELECT-only policy that requires the caller to be an active owner or admin of the request's company, and the learner an active member. Managers, learners, other companies and removed members see nothing.
   - The results view is shared with the console (`features/inclusion/ResultsView.tsx`, `scope` console or company). The learner's consent note now says company owners and admins can see the answers.
   - Client question #52 asks the client to confirm.
-- **Checks:** all 8 inclusion tests pass, and the type check and production build pass. The main chunk is 147 kB, up from 143 kB because of the new backdrop and the sign-in switch.
+- **Checks:** all 11 inclusion tests pass, as do the row-security and API-contract tests, the type check and the production build. Neon dropped the network during the full run, so four tests were re-run on their own and passed. The main chunk is 147 kB, up from 143 kB because of the new backdrop and the sign-in switch.
 
 ## Learner / organisation sign-in (2026-11-25, user request)
 
